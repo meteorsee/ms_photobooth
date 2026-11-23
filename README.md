@@ -1,4 +1,4 @@
-# to you. — a little photo booth
+# Moment Studio — a private online photo booth
 
 A private, browser-based photo booth for capturing a set of photos, styling a keepsake, and downloading or printing the result. It is a static site with no backend, account, database, or build step.
 

@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7eee8">
-  <meta name="description" content="Take the picture. Keep the feeling. A beautiful, private online photo booth for making downloadable keepsakes in your browser.">
-  <title>to you. — Your Private Online Photo Booth</title>
+  <meta name="description" content="Moment Studio is a private online photo booth where moments become memories. Take, style, print, and download beautiful keepsakes together.">
+  <title>Moment Studio — Where Moments Become Memories</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
   <script src="app.js" defer></script>
@@ -24,24 +24,28 @@
     <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H3V9h18v9h-3M6 14h12v8H6Z"/><path d="M17 12h1"/></symbol>
   </defs></svg>
   <header class="site-header">
-    <a href="./" class="wordmark" aria-label="to you home">to you<span>✻</span></a>
-    <span class="header-note">your private little corner for lovely memories.</span>
+    <a href="./" class="wordmark" aria-label="Moment Studio home">moment studio<span>✻</span></a>
+    <span class="header-note">for the people and moments worth holding onto.</span>
     <button class="text-button about-button" id="aboutButton"><svg><use href="#i-heart"/></svg> Made for moments</button>
   </header>
   <main>
     <section class="intro">
-      <div class="eyebrow">YOUR PRIVATE PHOTO BOOTH — NO SIGN-UP NEEDED</div>
-      <h1>Take the picture.<br><em>Keep the feeling.</em></h1>
-      <p>A beautiful little photo booth for the moments you never want to forget.</p>
+      <div class="eyebrow">A PHOTO BOOTH FOR THE PEOPLE YOU LOVE</div>
+      <h1>Where moments<br><em>become memories.</em></h1>
+      <p>For the people, the laughter, and the little pieces of life you'll always want to hold onto.</p>
       <div class="intro-promise" aria-label="Photo booth highlights">
-        <span><svg aria-hidden="true"><use href="#i-heart"/></svg> Private by design</span>
-        <span><svg aria-hidden="true"><use href="#i-camera"/></svg> Camera or upload</span>
+        <span><svg aria-hidden="true"><use href="#i-heart"/></svg> Made for togetherness</span>
+        <span><svg aria-hidden="true"><use href="#i-camera"/></svg> Private on your device</span>
         <span><svg aria-hidden="true"><use href="#i-spark"/></svg> Yours to keep</span>
+      </div>
+      <div class="hero-actions">
+        <a class="primary-button hero-primary" href="#booth"><svg aria-hidden="true"><use href="#i-camera"/></svg> Create a memory</a>
+        <button class="hero-secondary" id="heroHowButton"><svg aria-hidden="true"><use href="#i-heart"/></svg> See how it works</button>
       </div>
       <span class="intro-doodle" aria-hidden="true">♡</span>
     </section>
     <div class="workspace">
-      <section class="booth" aria-label="Photo booth">
+      <section class="booth" id="booth" aria-label="Photo booth">
         <div class="panel-top"><span><svg><use href="#i-camera"/></svg> THE BOOTH</span><span id="cameraStatus" class="camera-status">Camera is off</span></div>
         <div class="viewfinder" id="viewfinder">
           <video id="camera" autoplay muted playsinline></video>
@@ -49,14 +53,14 @@
           <div class="viewfinder-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
           <div class="start-screen" id="startScreen">
             <div class="mini-flower" aria-hidden="true">✻</div>
-            <span class="small-label">THIS MOMENT IS YOURS</span>
-            <h2>Come as you are.<br><em>Stay for six smiles.</em></h2>
-            <p>Your favourite people. Your silly side.<br>A little ordinary magic.</p>
+            <span class="small-label">WELCOME TO MOMENT STUDIO</span>
+            <h2>Bring your people close.<br><em>Stay for the memory.</em></h2>
+            <p>Your favourite faces. Your truest smiles.<br>A little ordinary magic to keep.</p>
             <button class="primary-button" id="enableCamera"><svg><use href="#i-camera"/></svg> Turn on my camera</button>
             <button class="demo-button" id="tryDemo">Just looking? Try the demo</button>
           </div>
           <div class="camera-error" id="cameraError" hidden role="status"></div>
-          <span class="viewfinder-brand" aria-hidden="true">to you</span>
+          <span class="viewfinder-brand" aria-hidden="true">moment studio</span>
           <span class="viewfinder-mode" id="viewfinderMode" hidden>LIVE VIEW</span>
           <div class="pose-overlay" id="poseOverlay" hidden><span id="poseCount">POSE 1 OF 6</span><p id="poseText">Your favourite smile.</p></div>
           <div class="countdown" id="countdown" hidden role="status" aria-live="assertive"></div>
@@ -96,11 +100,11 @@
         <div class="save-actions"><button id="downloadButton" class="primary-button" disabled><svg><use href="#i-download"/></svg> Save my keepsake</button><div class="secondary-save"><button id="letterButton" class="text-button" disabled><svg><use href="#i-letter"/></svg> Wrap in a letter</button><button id="printButton" class="text-button" disabled><svg><use href="#i-print"/></svg> Print</button></div></div>
       </aside>
     </div>
-    <div class="afterword"><span class="little-bow" aria-hidden="true">୨୧</span><p>No occasion needed.<br><em>Being here is enough.</em></p><span class="afterword-stamp">COLLECT MOMENTS<br>KEEP THEM CLOSE</span></div>
+    <div class="afterword"><span class="little-bow" aria-hidden="true">୨୧</span><p>The best memories aren't perfect.<br><em>They're yours.</em></p><span class="afterword-stamp">MADE TOGETHER<br>KEPT FOREVER</span></div>
   </main>
-  <footer><span>to you, with love.</span><span>A tiny corner of the internet for your memories.</span><button class="text-button" id="howButton">How it works</button></footer>
-  <dialog id="aboutDialog" class="info-dialog"><button class="close-dialog round-button" aria-label="Close"><svg><use href="#i-close"/></svg></button><span class="dialog-flower">✻</span><h2>A little moment<br><em>goes a long way.</em></h2><p>Turn on your camera, pick a layout, and press <strong>Start photo session</strong>. You'll get a countdown and a new pose idea before every photo.</p><p>Click any captured thumbnail to retake it. Make your frame your own, save a full-resolution PNG, or tuck it inside a little digital letter.</p><p class="privacy-note">Everything happens in your browser. Your camera and photos are never sent to a server. Downloads are saved only when you choose.</p><button class="primary-button close-dialog">Let's make a memory</button></dialog>
-  <dialog id="letterDialog" class="letter-dialog"><button class="close-dialog round-button" aria-label="Close"><svg><use href="#i-close"/></svg></button><div id="letterEditor"><span class="eyebrow">A MEMORY, SPECIAL DELIVERY</span><h2>For someone <em>lovely.</em></h2><label for="recipient">To</label><input id="recipient" maxlength="32" placeholder="someone who makes you smile"><label for="letterMessage">A little note</label><textarea id="letterMessage" maxlength="280" rows="3" placeholder="Here's a little piece of today, just for you."></textarea><label for="sender">With love,</label><input id="sender" maxlength="32" placeholder="your name"><button id="sealLetter" class="primary-button"><svg><use href="#i-heart"/></svg> Seal my letter</button></div><div id="sealedLetter" hidden><span class="eyebrow">SOMETHING WORTH KEEPING</span><h2>A little love, <em>enclosed.</em></h2><button id="envelope" class="envelope" aria-label="Open your letter"><span class="envelope-to" id="envelopeTo"></span><span class="stamp">to you<br>♡</span><span class="envelope-fold"></span><span class="wax-seal">♡</span></button><p id="envelopeHint">Tap the seal to open your letter.</p><div id="openLetter" hidden><p id="letterText"></p><img id="letterPhoto" alt="Your photo keepsake"><p id="letterSignature"></p><button id="downloadLetter" class="primary-button"><svg><use href="#i-download"/></svg> Save photo & note</button></div><button id="editLetter" class="text-button">Edit my note</button><p class="letter-footnote">A personal keepsake to download and share yourself.</p></div></dialog>
+  <footer><span>moment studio, made to keep.</span><span>A little corner of the internet for the people and memories you love.</span><button class="text-button" id="howButton">How it works</button></footer>
+  <dialog id="aboutDialog" class="info-dialog"><button class="close-dialog round-button" aria-label="Close"><svg><use href="#i-close"/></svg></button><span class="dialog-flower">✻</span><h2>Welcome to<br><em>Moment Studio.</em></h2><p>Turn on your camera, pick a layout, and press <strong>Start photo session</strong>. You'll get a countdown and a new pose idea before every photo.</p><p>Click any captured thumbnail to retake it. Make your frame your own, save a full-resolution PNG, or tuck it inside a little digital letter.</p><p class="privacy-note">Everything happens in your browser. Your camera and photos are never sent to a server. Downloads are saved only when you choose.</p><button class="primary-button close-dialog">Let's make a memory</button></dialog>
+  <dialog id="letterDialog" class="letter-dialog"><button class="close-dialog round-button" aria-label="Close"><svg><use href="#i-close"/></svg></button><div id="letterEditor"><span class="eyebrow">A MEMORY, SPECIAL DELIVERY</span><h2>For someone <em>lovely.</em></h2><label for="recipient">To</label><input id="recipient" maxlength="32" placeholder="someone who makes you smile"><label for="letterMessage">A little note</label><textarea id="letterMessage" maxlength="280" rows="3" placeholder="Here's a little piece of today, just for you."></textarea><label for="sender">With love,</label><input id="sender" maxlength="32" placeholder="your name"><button id="sealLetter" class="primary-button"><svg><use href="#i-heart"/></svg> Seal my letter</button></div><div id="sealedLetter" hidden><span class="eyebrow">SOMETHING WORTH KEEPING</span><h2>A little love, <em>enclosed.</em></h2><button id="envelope" class="envelope" aria-label="Open your letter"><span class="envelope-to" id="envelopeTo"></span><span class="stamp">moment<br>studio</span><span class="envelope-fold"></span><span class="wax-seal">♡</span></button><p id="envelopeHint">Tap the seal to open your letter.</p><div id="openLetter" hidden><p id="letterText"></p><img id="letterPhoto" alt="Your photo keepsake"><p id="letterSignature"></p><button id="downloadLetter" class="primary-button"><svg><use href="#i-download"/></svg> Save photo & note</button></div><button id="editLetter" class="text-button">Edit my note</button><p class="letter-footnote">A personal keepsake to download and share yourself.</p></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

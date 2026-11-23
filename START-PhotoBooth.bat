@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title to you. - PhotoBooth
+title Moment Studio - PhotoBooth
 cd /d "%~dp0"
 
 py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)" >nul 2>&1

@@ -64,7 +64,7 @@ def main():
         return 1
 
     url = "http://localhost:{}/".format(server.server_port)
-    print("\nto you. - Your local PhotoBooth")
+    print("\nMoment Studio - Your local PhotoBooth")
     print("\nOpen: " + url)
     print("Allow camera access when your browser asks.")
     print("Keep this window open while using the booth.")

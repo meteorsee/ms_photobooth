@@ -1,4 +1,4 @@
-TO YOU. - LOCAL PHOTOBOOTH FOR WINDOWS
+MOMENT STUDIO - LOCAL PHOTOBOOTH FOR WINDOWS
 
 SETUP
 1. Extract ALL contents of PhotoBooth-local.zip into:
@@ -26,7 +26,7 @@ Keep the launcher window open. Close it, or press Ctrl+C, to stop hosting.
 To start again later, double-click START-PhotoBooth.bat again.
 
 WHAT IS INCLUDED
-- The existing "to you." photo booth, including its fonts and styling.
+- The Moment Studio photo booth, including its fonts and styling.
 - Six-photo, classic-strip, and four-photo layouts.
 - Frame colours, filters, countdowns, retakes, and photo uploads.
 - PNG keepsakes, printable sheets, and downloadable photo-and-note letters.

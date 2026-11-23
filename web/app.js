@@ -296,7 +296,7 @@ function renderSheet() {
       for(let petal=0;petal<7;petal++) {const a=petal*Math.PI*2/7;c.beginPath();c.ellipse(x+pw/2+Math.sin(a)*ph*.23,y+ph*.44+Math.cos(a)*ph*.23,ph*.08,ph*.12,-a,0,Math.PI*2);c.stroke();}
       c.fillStyle=dark?'#c4b59d':'#9f8c72';c.textAlign='center';c.font='italic '+Math.round(ph*.08)+'px Editorial, Georgia';c.fillText('a moment waiting to happen',x+pw/2,y+ph*.85);
     }
-    c.fillStyle=ink;c.textAlign='left';c.font='italic 13px Editorial, Georgia';c.fillText('to you',x,y+ph+16);
+    c.fillStyle=ink;c.textAlign='left';c.font='italic 13px Editorial, Georgia';c.fillText('moment studio',x,y+ph+16);
   }
   const bottom=margin+l.rows*(ph+gap+8)-gap-8;
   c.fillStyle=ink;c.textAlign='center';
@@ -308,7 +308,7 @@ function renderSheet() {
   const date=state.capturedAt||new Date();
   const label=date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).toUpperCase();
   c.font='13px Arial';c.textAlign='left';c.fillText(label,margin,l.height-26);
-  c.textAlign='right';c.fillText(state.photos.slice(0,total()).some(p=>p?.demo)?'DEMO · TO YOU, WITH LOVE':'TO YOU, WITH LOVE',l.width-margin,l.height-26);
+  c.textAlign='right';c.fillText(state.photos.slice(0,total()).some(p=>p?.demo)?'DEMO · MOMENT STUDIO':'MOMENT STUDIO',l.width-margin,l.height-26);
   $('photoSheetWrap').style.width=state.layout==='strip'?'108px':'';
 }
 function loadImage(src) {return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=src;});}
@@ -323,7 +323,7 @@ function saveCanvas(canvas,name) {
 }
 function fileName(suffix='') {
   const d=state.capturedAt||new Date();
-  return `to-you-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}${suffix}.png`;
+  return `moment-studio-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}${suffix}.png`;
 }
 async function uploadPhotos(event) {
   const files=Array.from(event.target.files||[]);event.target.value='';
@@ -368,7 +368,7 @@ function saveLetter() {
   const sheet=$('photoSheet');
   const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=sheet.height+840;
   const c=canvas.getContext('2d');c.fillStyle='#f7f0e4';c.fillRect(0,0,canvas.width,canvas.height);
-  c.fillStyle='#873b39';c.font='italic 60px Editorial, Georgia';c.fillText('to you, with love.',100,110);
+  c.fillStyle='#873b39';c.font='italic 60px Editorial, Georgia';c.fillText('moment studio.',100,110);
   c.fillStyle='#584536';c.font='32px Editorial, Georgia';
   let y=wrapText(c,'To '+($('recipient').value.trim()||'someone lovely')+',',100,190,1200,48);
   c.font='italic 32px Editorial, Georgia';
@@ -402,11 +402,11 @@ $('printButton').addEventListener('click',()=>{
   if(!complete()) return;
   const printWindow=window.open('','_blank','width=700,height=900');
   if(!printWindow) {toast('Allow pop-ups for this site to print your keepsake.');return;}
-  printWindow.document.write('<!doctype html><html><head><title>to you — keepsake</title><style>body{margin:0;text-align:center}img{display:block;max-width:100%;max-height:94vh;margin:3vh auto}@page{margin:10mm}</style></head><body><img alt="Your keepsake"></body></html>');
+  printWindow.document.write('<!doctype html><html><head><title>Moment Studio — keepsake</title><style>body{margin:0;text-align:center}img{display:block;max-width:100%;max-height:94vh;margin:3vh auto}@page{margin:10mm}</style></head><body><img alt="Your keepsake"></body></html>');
   printWindow.document.close();const img=printWindow.document.querySelector('img');
   img.onload=()=>{printWindow.focus();printWindow.print();};img.src=$('photoSheet').toDataURL('image/png');
 });
-['aboutButton','howButton'].forEach(id=>$(id).addEventListener('click',()=>$('aboutDialog').showModal()));
+['aboutButton','heroHowButton','howButton'].forEach(id=>$(id).addEventListener('click',()=>$('aboutDialog').showModal()));
 document.querySelectorAll('.close-dialog').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
 document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}}));
 $('letterButton').addEventListener('click',()=>{if(!complete())return;$('letterEditor').hidden=false;$('sealedLetter').hidden=true;$('letterDialog').showModal();});
@@ -423,6 +423,30 @@ $('editLetter').addEventListener('click',()=>{$('letterEditor').hidden=false;$('
 $('downloadLetter').addEventListener('click',saveLetter);
 window.addEventListener('pagehide',()=>{cameraRequest++;state.runId++;state.running=false;stopCamera();cancelAnimationFrame(demoAnimation);});
 window.addEventListener('pageshow',event=>{if(event.persisted){state.mode=null;$('startScreen').hidden=false;$('demoCanvas').hidden=true;$('cameraStatus').textContent='Camera is off';$('cameraStatus').classList.remove('live');lockSettings(false);refresh();}});
+
+// Add depth on pointer devices and gentle entrance motion without affecting touch use.
+if(window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
+  document.querySelectorAll('.booth,.keepsake').forEach(card=>{
+    card.addEventListener('pointermove',event=>{
+      const rect=card.getBoundingClientRect();
+      card.style.setProperty('--spot-x',`${event.clientX-rect.left}px`);
+      card.style.setProperty('--spot-y',`${event.clientY-rect.top}px`);
+    });
+    card.addEventListener('pointerleave',()=>{
+      card.style.setProperty('--spot-x','50%');
+      card.style.setProperty('--spot-y','0px');
+    });
+  });
+}
+const revealItems=document.querySelectorAll('.booth,.keepsake,.afterword');
+if('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion:reduce)').matches) {
+  document.body.classList.add('js-enhanced');
+  revealItems.forEach(item=>item.classList.add('reveal-item'));
+  const revealObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{
+    if(entry.isIntersecting){entry.target.classList.add('revealed');revealObserver.unobserve(entry.target);}
+  }),{threshold:.08});
+  revealItems.forEach(item=>revealObserver.observe(item));
+}
 document.addEventListener('keydown',event=>{
   if(event.code==='Space' && !['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName) && !document.querySelector('dialog[open]')) {
     if(!$('startCapture').disabled) {event.preventDefault();captureSession();}
