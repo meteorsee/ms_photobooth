@@ -851,5 +851,14 @@ html{scroll-behavior:smooth}
   mix-blend-mode:normal;
 }
 .viewfinder[data-filter="cool"] .filter-wash{opacity:.5;background:linear-gradient(145deg,rgba(80,187,225,.5),rgba(48,78,158,.34));mix-blend-mode:soft-light}
+.viewfinder[data-filter="fisheye"] .filter-wash{
+  opacity:1;
+  border-radius:48%;
+  background:radial-gradient(ellipse at center,transparent 0 58%,rgba(9,13,18,.1) 69%,rgba(5,8,12,.62) 100%);
+  box-shadow:inset 0 0 0 3px rgba(222,242,247,.24),inset 0 0 45px rgba(5,9,14,.5);
+}
+.viewfinder.effect-fisheye video,.viewfinder.effect-fisheye>#demoCanvas{transform:scale(1.28);border-radius:44%}
+.viewfinder.effect-fisheye video.mirrored{transform:scaleX(-1) scale(1.28)}
+.viewfinder.effect-fisheye>#lensCanvas{transform:none;border-radius:0;clip-path:none}
 .filter.active:before{transform:scale(1.18);box-shadow:0 0 0 3px rgba(255,255,255,.2),0 3px 10px rgba(0,0,0,.18)}
 .viewfinder.effect-halation:before,.film-frame.effect-halation:before{background:radial-gradient(circle at 72% 22%,rgba(255,239,204,.62),rgba(248,93,76,.38) 25%,rgba(151,35,51,.08) 64%)}

@@ -28,6 +28,8 @@ const state = {layout:'six', color:'cream', filter:'original', photos:Array(6).f
   mode:null, facing:'user', mirrored:true, grain:false, running:false, runId:0, retake:null, capturedAt:null, demoFrame:0};
 let toastTimeout;
 let demoAnimation;
+let lensAnimation;
+let lensRenderer;
 let cameraRequest = 0;
 
 function toast(message) {
@@ -44,6 +46,19 @@ function updatePoseGuide(index=0) {
   $('poseGuideUse').setAttribute('href',`#pose-guide-${guide+1}`);
   $('poseGuideName').textContent=poseGuideNames[guide];
 }
+function filteredPreview(photo) {
+  if(!photo) return '';
+  const key=`${state.filter}:${state.grain?'grain':'clean'}`;
+  if(photo.previewKey===key&&photo.previewSource) return photo.previewSource;
+  const canvas=document.createElement('canvas');canvas.width=320;canvas.height=240;drawCover(canvas.getContext('2d'),processedPhoto(photo),0,0,canvas.width,canvas.height);
+  photo.previewKey=key;photo.previewSource=canvas.toDataURL('image/jpeg',.88);return photo.previewSource;
+}
+function processedPhoto(photo) {
+  const key=`${state.filter}:${state.grain?'grain':'clean'}`;
+  if(photo.processedKey===key&&photo.processedCanvas) return photo.processedCanvas;
+  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;drawPhotoEffect(canvas.getContext('2d'),photo.img,0,0,canvas.width,canvas.height);
+  photo.processedKey=key;photo.processedCanvas=canvas;photo.previewKey='';photo.previewSource='';return canvas;
+}
 function choose(group, button) {
   document.querySelectorAll(group).forEach(el => {
     const active = el === button;
@@ -54,11 +69,54 @@ function choose(group, button) {
 function setLiveStyles() {
   $('camera').style.filter = filters[state.filter];
   $('demoCanvas').style.filter = filters[state.filter];
+  $('lensCanvas').style.filter = filters[state.filter];
   $('viewfinder').dataset.filter=state.filter;
   $('camera').classList.toggle('mirrored',state.mirrored);
   $('viewfinder').classList.toggle('effect-fisheye',state.filter==='fisheye');
   $('viewfinder').classList.toggle('effect-halation',state.filter==='halation');
   $('viewfinder').classList.toggle('effect-grain',state.grain || state.filter==='ccd');
+  setLensPreview();
+}
+function createLensShader(gl,type,source) {
+  const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
+  if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader)||'Lens shader failed to compile.');
+  return shader;
+}
+function getLensRenderer() {
+  if(lensRenderer!==undefined) return lensRenderer;
+  const canvas=$('lensCanvas'),gl=canvas.getContext('webgl',{alpha:false,antialias:true,preserveDrawingBuffer:false});
+  if(!gl) {lensRenderer=null;return null;}
+  try {
+    const vertex=createLensShader(gl,gl.VERTEX_SHADER,'attribute vec2 a_position;varying vec2 v_uv;void main(){v_uv=(a_position+1.0)*0.5;gl_Position=vec4(a_position,0.0,1.0);}');
+    const fragment=createLensShader(gl,gl.FRAGMENT_SHADER,'precision mediump float;varying vec2 v_uv;uniform sampler2D u_texture;uniform vec2 u_crop;uniform float u_strength;uniform float u_mirror;void main(){vec2 p=v_uv*2.0-1.0;float r=length(p);if(r<1.0&&r>0.0001){float sourceR=r*(1.0-u_strength*pow(1.0-r,2.0));p*=sourceR/r;}vec2 uv=(p+1.0)*0.5;uv=(uv-0.5)*u_crop+0.5;uv.y=1.0-uv.y;if(u_mirror>0.5)uv.x=1.0-uv.x;vec4 color=texture2D(u_texture,uv);float vignette=smoothstep(0.64,1.12,r);color.rgb*=1.0-vignette*0.48;gl_FragColor=color;}');
+    const program=gl.createProgram();gl.attachShader(program,vertex);gl.attachShader(program,fragment);gl.linkProgram(program);
+    if(!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program)||'Lens program failed to link.');
+    const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+    const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    lensRenderer={gl,program,texture,position:gl.getAttribLocation(program,'a_position'),crop:gl.getUniformLocation(program,'u_crop'),strength:gl.getUniformLocation(program,'u_strength'),mirror:gl.getUniformLocation(program,'u_mirror')};
+  } catch(error) {lensRenderer=null;}
+  return lensRenderer;
+}
+function drawLensPreview() {
+  if(state.filter!=='fisheye'||!['camera','demo'].includes(state.mode)) return;
+  const renderer=getLensRenderer(),canvas=$('lensCanvas');
+  if(!renderer) {canvas.hidden=true;return;}
+  const source=state.mode==='camera'?$('camera'):$('demoCanvas');
+  const sourceWidth=source.videoWidth||source.width,sourceHeight=source.videoHeight||source.height;
+  if(sourceWidth&&sourceHeight) {
+    const {gl,program,texture}=renderer,targetAspect=canvas.width/canvas.height,sourceAspect=sourceWidth/sourceHeight;
+    let cropX=1,cropY=1;if(sourceAspect>targetAspect)cropX=targetAspect/sourceAspect;else cropY=sourceAspect/targetAspect;
+    gl.viewport(0,0,canvas.width,canvas.height);gl.useProgram(program);gl.bindTexture(gl.TEXTURE_2D,texture);
+    try {gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);} catch(error) {lensAnimation=requestAnimationFrame(drawLensPreview);return;}
+    gl.enableVertexAttribArray(renderer.position);gl.vertexAttribPointer(renderer.position,2,gl.FLOAT,false,0,0);gl.uniform2f(renderer.crop,cropX,cropY);gl.uniform1f(renderer.strength,.86);gl.uniform1f(renderer.mirror,state.mode==='camera'&&state.mirrored?1:0);gl.drawArrays(gl.TRIANGLES,0,6);
+  }
+  lensAnimation=requestAnimationFrame(drawLensPreview);
+}
+function setLensPreview() {
+  cancelAnimationFrame(lensAnimation);
+  const enabled=state.filter==='fisheye'&&['camera','demo'].includes(state.mode)&&Boolean(getLensRenderer());
+  $('lensCanvas').hidden=!enabled;
+  if(enabled) lensAnimation=requestAnimationFrame(drawLensPreview);
 }
 function lockSettings(locked) {
   document.querySelectorAll('.layout-button, .filter, #grainToggle, #timer, #uploadButton, #mirrorButton, #switchCameraButton, #quickSwitchCamera, #useCamera').forEach(el => {el.disabled=locked;});
@@ -78,9 +136,8 @@ function refresh() {
     button.disabled=state.running || !state.photos[i];
     if(state.photos[i]) {
       const img=document.createElement('img');
-      img.src=state.photos[i].src;
+      img.src=filteredPreview(state.photos[i]);
       img.alt=`Photo ${i+1}`;
-      img.style.filter=filters[state.filter];
       const label=document.createElement('span');
       label.className='retake-label';label.textContent='Retake';
       button.append(img,label);
@@ -98,7 +155,7 @@ function refresh() {
     const frame=document.createElement('span');
     frame.className='live-capture-frame'+(state.photos[i]?' captured':'')+(state.running && !state.photos[i] && i===filled?' current':'');
     if(state.photos[i]) {
-      const img=document.createElement('img');img.src=state.photos[i].src;img.alt='';img.style.filter=filters[state.filter];frame.append(img);
+      const img=document.createElement('img');img.src=filteredPreview(state.photos[i]);img.alt='';frame.append(img);
     } else frame.textContent=String(i+1);
     $('liveCaptureFrames').append(frame);
   }
@@ -118,8 +175,8 @@ function refresh() {
   $('latestThumbnailImage').hidden=!latest;
   $('latestThumbnailEmpty').hidden=Boolean(latest);
   if(latest) {
-    $('latestThumbnailImage').src=latest.src;
-    $('latestThumbnailImage').style.filter=filters[state.filter];
+    $('latestThumbnailImage').src=filteredPreview(latest);
+    $('latestThumbnailImage').style.filter='none';
   }
   $('quickShutter').disabled=!state.mode || state.running || (done && state.retake===null);
   $('quickShutter').setAttribute('aria-label',state.retake!==null?`Retake photo ${state.retake+1}`:filled?'Continue photo session':'Start photo session');
@@ -377,20 +434,28 @@ function drawBow(c,x,y,size,color) {
   c.beginPath();c.moveTo(0,0);c.bezierCurveTo(-75,-65,-75,45,0,0);c.bezierCurveTo(75,-65,75,45,0,0);c.moveTo(0,0);c.quadraticCurveTo(-6,24,-25,38);c.moveTo(0,0);c.quadraticCurveTo(7,23,24,35);c.stroke();c.restore();
 }
 function drawFisheye(c,img,x,y,w,h) {
-  const source=document.createElement('canvas');source.width=Math.max(1,Math.round(w));source.height=Math.max(1,Math.round(h));
-  drawCover(source.getContext('2d'),img,0,0,source.width,source.height);
-  const strips=72,sw=source.width/strips;
-  c.save();c.beginPath();c.rect(x,y,w,h);c.clip();
-  for(let i=0;i<strips;i++) {
-    const nx=((i+.5)/strips)*2-1,bulge=1-nx*nx;
-    const scaleY=.91+bulge*.31;
-    const dx=x+i*(w/strips)+nx*Math.abs(nx)*w*.025;
-    const dh=h*scaleY,dy=y+(h-dh)/2;
-    c.drawImage(source,i*sw,0,sw+1,source.height,dx,dy,w/strips*1.12,dh);
+  const width=Math.max(1,Math.round(w)),height=Math.max(1,Math.round(h));
+  const source=document.createElement('canvas');source.width=width;source.height=height;
+  const sourceContext=source.getContext('2d',{willReadFrequently:true});sourceContext.filter=filters.fisheye;drawCover(sourceContext,img,0,0,width,height);
+  const input=sourceContext.getImageData(0,0,width,height),output=sourceContext.createImageData(width,height),src=input.data,dst=output.data;
+  const halfW=width/2,halfH=height/2,strength=.86;
+  for(let py=0;py<height;py++) {
+    const ny=(py+.5-halfH)/halfH;
+    for(let px=0;px<width;px++) {
+      const nx=(px+.5-halfW)/halfW,r=Math.hypot(nx,ny);
+      const mappedR=r<1?r*(1-strength*(1-r)*(1-r)):r;
+      const ratio=r>.0001?mappedR/r:1;
+      const sx=Math.max(0,Math.min(width-1,(nx*ratio*.5+.5)*width-.5));
+      const sy=Math.max(0,Math.min(height-1,(ny*ratio*.5+.5)*height-.5));
+      const x0=Math.floor(sx),y0=Math.floor(sy),x1=Math.min(width-1,x0+1),y1=Math.min(height-1,y0+1),fx=sx-x0,fy=sy-y0;
+      const i00=(y0*width+x0)*4,i10=(y0*width+x1)*4,i01=(y1*width+x0)*4,i11=(y1*width+x1)*4,out=(py*width+px)*4;
+      for(let channel=0;channel<4;channel++) dst[out+channel]=src[i00+channel]*(1-fx)*(1-fy)+src[i10+channel]*fx*(1-fy)+src[i01+channel]*(1-fx)*fy+src[i11+channel]*fx*fy;
+    }
   }
-  const vignette=c.createRadialGradient(x+w/2,y+h/2,w*.18,x+w/2,y+h/2,w*.7);
-  vignette.addColorStop(0,'rgba(255,255,255,0)');vignette.addColorStop(.72,'rgba(255,255,255,0)');vignette.addColorStop(1,'rgba(25,15,12,.24)');
-  c.fillStyle=vignette;c.fillRect(x,y,w,h);c.restore();
+  c.putImageData(output,Math.round(x),Math.round(y));
+  c.save();c.beginPath();c.rect(x,y,w,h);c.clip();
+  const vignette=c.createRadialGradient(x+w/2,y+h/2,w*.16,x+w/2,y+h/2,w*.68);vignette.addColorStop(0,'rgba(255,255,255,0)');vignette.addColorStop(.66,'rgba(255,255,255,0)');vignette.addColorStop(1,'rgba(12,13,17,.52)');c.fillStyle=vignette;c.fillRect(x,y,w,h);
+  c.strokeStyle='rgba(225,242,246,.28)';c.lineWidth=Math.max(3,w*.012);c.beginPath();c.ellipse(x+w/2,y+h/2,w*.485,h*.485,0,0,Math.PI*2);c.stroke();c.restore();
 }
 function drawHalation(c,x,y,w,h) {
   c.save();c.globalCompositeOperation='screen';
@@ -459,7 +524,7 @@ function renderSheet() {
   for(let i=0;i<l.count;i++) {
     const x=margin+(i%l.columns)*(pw+gap),y=margin+Math.floor(i/l.columns)*(ph+gap+8);
     const photo=state.photos[i];
-    if(photo) drawPhotoEffect(c,photo.img,x,y,pw,ph);
+    if(photo) drawCover(c,processedPhoto(photo),x,y,pw,ph);
     else {
       c.fillStyle=dark?'#514c43':'#e9e0d2';c.fillRect(x,y,pw,ph);
       c.strokeStyle=dark?'#8c8171':'#b7a58b';c.lineWidth=2;
@@ -601,7 +666,7 @@ $('sealLetter').addEventListener('click',()=>{
 $('envelope').addEventListener('click',()=>{$('envelope').classList.add('opened');$('envelopeHint').hidden=true;$('openLetter').hidden=false;});
 $('editLetter').addEventListener('click',()=>{$('letterEditor').hidden=false;$('sealedLetter').hidden=true;});
 $('downloadLetter').addEventListener('click',saveLetter);
-window.addEventListener('pagehide',()=>{cameraRequest++;state.runId++;state.running=false;stopCamera();cancelAnimationFrame(demoAnimation);});
+window.addEventListener('pagehide',()=>{cameraRequest++;state.runId++;state.running=false;stopCamera();cancelAnimationFrame(demoAnimation);cancelAnimationFrame(lensAnimation);});
 window.addEventListener('pageshow',event=>{if(event.persisted){state.mode=null;state.facing='user';state.mirrored=true;$('startScreen').hidden=false;$('demoCanvas').hidden=true;$('switchCameraButton').hidden=true;$('mirrorButton').hidden=true;$('cameraStatus').textContent='Camera is off';$('cameraStatus').classList.remove('live');lockSettings(false);refresh();setTimeout(()=>enableCamera('user'),120);}});
 
 // Add depth on pointer devices and gentle entrance motion without affecting touch use.
