@@ -28,7 +28,7 @@ To start again later, double-click START-PhotoBooth.bat again.
 WHAT IS INCLUDED
 - The Moment Studio photo booth, including its fonts and styling.
 - Six-photo, classic-strip, and four-photo layouts.
-- Frame colours, filters, countdowns, retakes, and photo uploads.
+- Front/rear camera switching, 12 looks, creative effects, grain, and uploads.
 - PNG keepsakes, printable sheets, and downloadable photo-and-note letters.
 - The demo mode, which works without a camera.
 

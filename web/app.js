@@ -8,12 +8,22 @@ const layouts = {
 };
 const colors = {cream:'#fffaf0', rose:'#efd2d2', sage:'#d9dfcd', blue:'#d6dfea', ink:'#353331'};
 const filters = {
-  original:'none', warm:'sepia(.2) saturate(1.12) contrast(.96) brightness(1.04)',
-  vintage:'sepia(.43) saturate(.72) contrast(.88) brightness(1.06)', mono:'grayscale(1) contrast(1.08)'
+  original:'none',
+  soft:'brightness(1.08) contrast(.9) saturate(.92)',
+  fresh:'brightness(1.16) contrast(.88) saturate(.9) sepia(.04) hue-rotate(145deg)',
+  warm:'sepia(.2) saturate(1.12) contrast(.96) brightness(1.04)',
+  blush:'sepia(.18) saturate(1.18) hue-rotate(322deg) brightness(1.05) contrast(.95)',
+  ccd:'brightness(1.08) contrast(1.12) saturate(1.2)',
+  vintage:'sepia(.43) saturate(.72) contrast(.88) brightness(1.06)',
+  cinema:'contrast(1.18) saturate(.78) brightness(.92) sepia(.1)',
+  cool:'sepia(.08) hue-rotate(145deg) saturate(.95) brightness(1.03) contrast(1.02)',
+  halation:'brightness(1.04) contrast(.96) saturate(1.13)',
+  fisheye:'contrast(1.06) saturate(1.08) brightness(1.02)',
+  mono:'grayscale(1) contrast(1.08)'
 };
 const poses = ['Your favourite smile.', 'A little shy, a little cute.', 'Get close. A little closer.', 'Your best serious face.', 'One for the silly side.', 'One last moment. Just be you.'];
 const state = {layout:'six', color:'cream', filter:'original', photos:Array(6).fill(null), stream:null,
-  mode:null, mirrored:true, running:false, runId:0, retake:null, capturedAt:null, demoFrame:0};
+  mode:null, facing:'user', mirrored:true, grain:false, running:false, runId:0, retake:null, capturedAt:null, demoFrame:0};
 let toastTimeout;
 let demoAnimation;
 let cameraRequest = 0;
@@ -38,9 +48,12 @@ function setLiveStyles() {
   $('camera').style.filter = filters[state.filter];
   $('demoCanvas').style.filter = filters[state.filter];
   $('camera').classList.toggle('mirrored',state.mirrored);
+  $('viewfinder').classList.toggle('effect-fisheye',state.filter==='fisheye');
+  $('viewfinder').classList.toggle('effect-halation',state.filter==='halation');
+  $('viewfinder').classList.toggle('effect-grain',state.grain || state.filter==='ccd');
 }
 function lockSettings(locked) {
-  document.querySelectorAll('.layout-button, #timer, #uploadButton, #mirrorButton, #useCamera').forEach(el => {el.disabled=locked;});
+  document.querySelectorAll('.layout-button, .filter, #grainToggle, #timer, #uploadButton, #mirrorButton, #switchCameraButton, #useCamera').forEach(el => {el.disabled=locked;});
 }
 function refresh() {
   const n = total();
@@ -51,6 +64,9 @@ function refresh() {
   for(let i=0;i<n;i++) {
     const button=document.createElement('button');
     button.className='film-frame'+(state.photos[i]?' captured':'')+(state.retake===i?' current':'');
+    button.classList.toggle('effect-fisheye',state.filter==='fisheye');
+    button.classList.toggle('effect-halation',state.filter==='halation');
+    button.classList.toggle('effect-grain',state.grain || state.filter==='ccd');
     button.disabled=state.running || !state.photos[i];
     if(state.photos[i]) {
       const img=document.createElement('img');
@@ -94,20 +110,45 @@ function refresh() {
   renderSheet();
 }
 
-async function enableCamera() {
+function updateFacingControls() {
+  const rear=state.facing==='environment';
+  const nextLabel=rear?'Front camera':'Rear camera';
+  $('cameraFacingLabel').textContent=nextLabel;
+  $('switchCameraButton').title=`Switch to ${nextLabel.toLowerCase()}`;
+  $('switchCameraButton').setAttribute('aria-label',`Switch to ${nextLabel.toLowerCase()}`);
+  $('viewfinderMode').textContent=rear?'LIVE · REAR CAMERA':'LIVE · FRONT CAMERA';
+  $('mirrorButton').setAttribute('aria-pressed',String(state.mirrored));
+}
+async function enableCamera(nextFacing=state.facing) {
   if(state.running) return;
   const request=++cameraRequest;
+  const switching=state.mode==='camera';
+  const previousFacing=state.facing;
   $('enableCamera').disabled=true;
-  $('enableCamera').textContent='Opening your camera…';
+  $('switchCameraButton').disabled=true;
+  $('enableCamera').textContent=switching?'Switching camera…':'Opening your camera…';
   $('cameraError').hidden=true;
   $('viewfinder').classList.remove('error');
   try {
     if(!navigator.mediaDevices?.getUserMedia) throw new Error('unavailable');
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
+    if(switching) {state.mode='switching';stopCamera();}
+    let usedFallback=false;
+    let stream;
+    try {
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:switching?{exact:nextFacing}:{ideal:nextFacing},width:{ideal:1280},height:{ideal:960}},audio:false});
+    } catch(cameraError) {
+      if(!switching || !['OverconstrainedError','NotFoundError'].includes(cameraError.name)) throw cameraError;
+      usedFallback=true;
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:nextFacing},width:{ideal:1280},height:{ideal:960}},audio:false});
+    }
     if(request!==cameraRequest) {stream.getTracks().forEach(t=>t.stop());return;}
     stopCamera();
     cancelAnimationFrame(demoAnimation);
     state.stream=stream;
+    const track=stream.getVideoTracks()[0];
+    const actualFacing=track.getSettings?.().facingMode;
+    state.facing=actualFacing==='user'||actualFacing==='environment'?actualFacing:usedFallback?previousFacing:nextFacing;
+    state.mirrored=state.facing==='user';
     const video=$('camera');
     video.srcObject=stream;
     await video.play();
@@ -117,33 +158,46 @@ async function enableCamera() {
     $('startScreen').hidden=true;
     $('cameraStatus').textContent='Camera is on';
     $('cameraStatus').classList.add('live');
-    $('viewfinderMode').textContent='LIVE VIEW';
+    $('cameraStatus').removeAttribute('title');
+    $('cameraStatus').style.cursor='';
     $('viewfinderMode').hidden=false;
+    $('switchCameraButton').hidden=false;
     $('mirrorButton').hidden=false;
     $('useCamera').hidden=true;
     $('viewfinderHint').textContent='A good time looks good on you.';
-    stream.getVideoTracks()[0].addEventListener('ended',()=>{
-      if(state.mode==='camera') {
+    updateFacingControls();
+    track.addEventListener('ended',()=>{
+      if(state.mode==='camera' && request===cameraRequest) {
         cancelSession(false);state.mode=null;state.stream=null;
         $('startScreen').hidden=false;$('cameraStatus').textContent='Camera disconnected';
-        $('cameraStatus').classList.remove('live');refresh();
+        $('cameraStatus').classList.remove('live');$('switchCameraButton').hidden=true;$('mirrorButton').hidden=true;refresh();
         toast('Camera disconnected. Turn it on again to continue.');
       }
     });
     setLiveStyles();refresh();
+    if(switching) toast(state.facing===nextFacing?`${state.facing==='environment'?'Rear':'Front'} camera is ready.`:'That camera is not available on this device.');
   } catch(error) {
+    if(request!==cameraRequest) return;
     stopCamera();
+    state.mode=null;
+    $('startScreen').hidden=false;
+    $('switchCameraButton').hidden=true;
+    $('mirrorButton').hidden=true;
     $('viewfinder').classList.add('error');
     $('cameraError').hidden=false;
     $('cameraError').textContent=error.name==='NotAllowedError'?'Camera access is blocked. Allow it in your browser settings, or use your own photos below.':error.name==='NotFoundError'?'No camera found. You can upload photos below or try the demo.':'Your camera could not open. Try closing other camera apps, or upload your photos below.';
   } finally {
-    $('enableCamera').disabled=false;
-    $('enableCamera').innerHTML='<svg><use href="#i-camera"/></svg> Turn on my camera';
+    if(request===cameraRequest) {
+      $('enableCamera').disabled=false;
+      $('switchCameraButton').disabled=false;
+      $('enableCamera').innerHTML='<svg><use href="#i-camera"/></svg> Turn on my camera';
+    }
   }
 }
 function stopCamera() {
   if(state.stream) state.stream.getTracks().forEach(track=>track.stop());
   state.stream=null;
+  $('camera').srcObject=null;
 }
 function startDemo() {
   cameraRequest++;
@@ -154,6 +208,7 @@ function startDemo() {
   $('viewfinder').classList.remove('error');
   $('cameraStatus').textContent='Demo studio';$('cameraStatus').classList.remove('live');
   $('viewfinderMode').textContent='DEMO · NO CAMERA';$('viewfinderMode').hidden=false;
+  $('switchCameraButton').hidden=true;
   $('mirrorButton').hidden=true;
   $('useCamera').hidden=false;
   $('viewfinderHint').textContent='A little practice, a little play.';
@@ -277,6 +332,46 @@ function drawBow(c,x,y,size,color) {
   c.save();c.translate(x,y);c.scale(size/100,size/100);c.strokeStyle=color;c.lineWidth=4;
   c.beginPath();c.moveTo(0,0);c.bezierCurveTo(-75,-65,-75,45,0,0);c.bezierCurveTo(75,-65,75,45,0,0);c.moveTo(0,0);c.quadraticCurveTo(-6,24,-25,38);c.moveTo(0,0);c.quadraticCurveTo(7,23,24,35);c.stroke();c.restore();
 }
+function drawFisheye(c,img,x,y,w,h) {
+  const source=document.createElement('canvas');source.width=Math.max(1,Math.round(w));source.height=Math.max(1,Math.round(h));
+  drawCover(source.getContext('2d'),img,0,0,source.width,source.height);
+  const strips=72,sw=source.width/strips;
+  c.save();c.beginPath();c.rect(x,y,w,h);c.clip();
+  for(let i=0;i<strips;i++) {
+    const nx=((i+.5)/strips)*2-1,bulge=1-nx*nx;
+    const scaleY=.91+bulge*.31;
+    const dx=x+i*(w/strips)+nx*Math.abs(nx)*w*.025;
+    const dh=h*scaleY,dy=y+(h-dh)/2;
+    c.drawImage(source,i*sw,0,sw+1,source.height,dx,dy,w/strips*1.12,dh);
+  }
+  const vignette=c.createRadialGradient(x+w/2,y+h/2,w*.18,x+w/2,y+h/2,w*.7);
+  vignette.addColorStop(0,'rgba(255,255,255,0)');vignette.addColorStop(.72,'rgba(255,255,255,0)');vignette.addColorStop(1,'rgba(25,15,12,.24)');
+  c.fillStyle=vignette;c.fillRect(x,y,w,h);c.restore();
+}
+function drawHalation(c,x,y,w,h) {
+  c.save();c.globalCompositeOperation='screen';
+  const glow=c.createRadialGradient(x+w*.72,y+h*.22,0,x+w*.72,y+h*.22,w*.58);
+  glow.addColorStop(0,'rgba(255,226,190,.32)');glow.addColorStop(.28,'rgba(255,105,83,.19)');glow.addColorStop(1,'rgba(155,34,48,0)');
+  c.fillStyle=glow;c.fillRect(x,y,w,h);
+  c.strokeStyle='rgba(191,54,58,.12)';c.lineWidth=Math.max(8,w*.018);c.strokeRect(x,y,w,h);c.restore();
+}
+function drawGrain(c,x,y,w,h,amount=.13) {
+  const grain=document.createElement('canvas');grain.width=96;grain.height=72;
+  const gc=grain.getContext('2d'),image=gc.createImageData(grain.width,grain.height);
+  for(let i=0;i<image.data.length;i+=4) {
+    const value=Math.random()*255;image.data[i]=value;image.data[i+1]=value;image.data[i+2]=value;image.data[i+3]=85;
+  }
+  gc.putImageData(image,0,0);
+  c.save();c.globalAlpha=amount;c.globalCompositeOperation='soft-light';c.imageSmoothingEnabled=false;c.drawImage(grain,x,y,w,h);c.restore();
+}
+function drawPhotoEffect(c,img,x,y,w,h) {
+  c.save();c.filter=filters[state.filter];
+  if(state.filter==='fisheye') drawFisheye(c,img,x,y,w,h);
+  else drawCover(c,img,x,y,w,h);
+  c.restore();
+  if(state.filter==='halation') drawHalation(c,x,y,w,h);
+  if(state.grain || state.filter==='ccd') drawGrain(c,x,y,w,h,state.grain ? .17 : .1);
+}
 function renderSheet() {
   const canvas=$('photoSheet'),l=layouts[state.layout];
   canvas.width=l.width;canvas.height=l.height;
@@ -288,7 +383,7 @@ function renderSheet() {
   for(let i=0;i<l.count;i++) {
     const x=margin+(i%l.columns)*(pw+gap),y=margin+Math.floor(i/l.columns)*(ph+gap+8);
     const photo=state.photos[i];
-    if(photo) {c.save();c.filter=filters[state.filter];drawCover(c,photo.img,x,y,pw,ph);c.restore();}
+    if(photo) drawPhotoEffect(c,photo.img,x,y,pw,ph);
     else {
       c.fillStyle=dark?'#514c43':'#e9e0d2';c.fillRect(x,y,pw,ph);
       c.strokeStyle=dark?'#8c8171':'#b7a58b';c.lineWidth=2;
@@ -387,6 +482,7 @@ $('cameraStatus').addEventListener('click',()=>{if(state.mode==='demo'&&!state.r
 $('startCapture').addEventListener('click',captureSession);
 $('cancelCapture').addEventListener('click',()=>cancelSession());
 $('againOverlay').addEventListener('click',resetSession);
+$('switchCameraButton').addEventListener('click',()=>enableCamera(state.facing==='environment'?'user':'environment'));
 $('mirrorButton').addEventListener('click',()=>{state.mirrored=!state.mirrored;$('mirrorButton').setAttribute('aria-pressed',String(state.mirrored));setLiveStyles();toast(state.mirrored?'Photos will match your mirrored preview.':'Photos will save without mirroring.');});
 document.querySelectorAll('[data-layout]').forEach(button=>button.addEventListener('click',()=>{
   if(state.running) return;state.layout=button.dataset.layout;state.retake=null;
@@ -394,6 +490,7 @@ document.querySelectorAll('[data-layout]').forEach(button=>button.addEventListen
 }));
 document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{state.color=button.dataset.color;choose('[data-color]',button);renderSheet();}));
 document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{state.filter=button.dataset.filter;choose('[data-filter]',button);setLiveStyles();refresh();}));
+$('grainToggle').addEventListener('change',event=>{state.grain=event.target.checked;setLiveStyles();refresh();toast(state.grain?'Film grain is on.':'Film grain is off.');});
 $('caption').addEventListener('input',renderSheet);
 $('uploadButton').addEventListener('click',()=>$('photoUpload').click());
 $('photoUpload').addEventListener('change',uploadPhotos);
@@ -422,7 +519,7 @@ $('envelope').addEventListener('click',()=>{$('envelope').classList.add('opened'
 $('editLetter').addEventListener('click',()=>{$('letterEditor').hidden=false;$('sealedLetter').hidden=true;});
 $('downloadLetter').addEventListener('click',saveLetter);
 window.addEventListener('pagehide',()=>{cameraRequest++;state.runId++;state.running=false;stopCamera();cancelAnimationFrame(demoAnimation);});
-window.addEventListener('pageshow',event=>{if(event.persisted){state.mode=null;$('startScreen').hidden=false;$('demoCanvas').hidden=true;$('cameraStatus').textContent='Camera is off';$('cameraStatus').classList.remove('live');lockSettings(false);refresh();}});
+window.addEventListener('pageshow',event=>{if(event.persisted){state.mode=null;state.facing='user';state.mirrored=true;$('startScreen').hidden=false;$('demoCanvas').hidden=true;$('switchCameraButton').hidden=true;$('mirrorButton').hidden=true;$('cameraStatus').textContent='Camera is off';$('cameraStatus').classList.remove('live');lockSettings(false);refresh();}});
 
 // Add depth on pointer devices and gentle entrance motion without affecting touch use.
 if(window.matchMedia('(hover:hover) and (pointer:fine)').matches) {

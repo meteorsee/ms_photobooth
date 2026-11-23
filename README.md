@@ -5,7 +5,8 @@ A private, browser-based photo booth for capturing a set of photos, styling a ke
 ## What it does
 
 - Captures six-photo, classic-strip, or four-photo layouts
-- Offers frame colours, filters, countdowns, retakes, and photo uploads
+- Switches between front and rear cameras when available
+- Offers frame colours, twelve looks, creative lens effects, optional film grain, countdowns, retakes, and photo uploads
 - Downloads full-resolution PNG keepsakes and photo-and-note letters
 - Prints finished photo sheets
 - Includes a demo mode that works without a camera
