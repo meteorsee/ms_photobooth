@@ -13,10 +13,13 @@ const filters = {
   fresh:'brightness(1.24) contrast(.82) saturate(1.08) sepia(.16) hue-rotate(145deg)',
   warm:'sepia(.4) saturate(1.42) contrast(1.04) brightness(1.05)',
   blush:'sepia(.3) saturate(1.5) hue-rotate(310deg) brightness(1.1) contrast(.92)',
+  dream:'brightness(1.18) contrast(.82) saturate(1.12) sepia(.08)',
+  film400:'sepia(.3) saturate(1.2) contrast(.95) brightness(1.04) hue-rotate(348deg)',
   ccd:'brightness(1.18) contrast(1.28) saturate(1.55)',
   vintage:'sepia(.7) saturate(.72) contrast(1.07) brightness(.92)',
   cinema:'contrast(1.36) saturate(.72) brightness(.86) sepia(.18)',
   cool:'sepia(.2) hue-rotate(150deg) saturate(1.42) brightness(1.02) contrast(1.15)',
+  prism:'contrast(1.16) saturate(1.5) brightness(1.04)',
   halation:'brightness(1.1) contrast(1.06) saturate(1.38)',
   fisheye:'contrast(1.14) saturate(1.24) brightness(1.04)',
   mono:'grayscale(1) contrast(1.38) brightness(1.03)'
@@ -25,7 +28,7 @@ const poses = ['Your favourite smile.', 'A little shy, a little cute.', 'Get clo
 const momentLabels = ['the first smile', 'a little closer', 'caught laughing', 'our serious face', 'the silly one', 'just like this'];
 const poseGuideNames = ['Frame your face', 'Peace by your cheek', 'Make a little heart', 'Stay inside the frame', 'Go a little silly', 'One last natural smile'];
 const state = {layout:'six', color:'cream', filter:'original', photos:Array(6).fill(null), stream:null,
-  mode:null, facing:'user', mirrored:true, grain:false, running:false, runId:0, retake:null, capturedAt:null, demoFrame:0};
+  mode:null, facing:'user', mirrored:true, grain:false, fisheyeStrength:.58, running:false, runId:0, retake:null, capturedAt:null, demoFrame:0};
 let toastTimeout;
 let demoAnimation;
 let lensAnimation;
@@ -46,15 +49,16 @@ function updatePoseGuide(index=0) {
   $('poseGuideUse').setAttribute('href',`#pose-guide-${guide+1}`);
   $('poseGuideName').textContent=poseGuideNames[guide];
 }
+function effectKey() {return `${state.filter}:${state.grain?'grain':'clean'}${state.filter==='fisheye'?`:${state.fisheyeStrength.toFixed(2)}`:''}`;}
 function filteredPreview(photo) {
   if(!photo) return '';
-  const key=`${state.filter}:${state.grain?'grain':'clean'}`;
+  const key=effectKey();
   if(photo.previewKey===key&&photo.previewSource) return photo.previewSource;
   const canvas=document.createElement('canvas');canvas.width=320;canvas.height=240;drawCover(canvas.getContext('2d'),processedPhoto(photo),0,0,canvas.width,canvas.height);
   photo.previewKey=key;photo.previewSource=canvas.toDataURL('image/jpeg',.88);return photo.previewSource;
 }
 function processedPhoto(photo) {
-  const key=`${state.filter}:${state.grain?'grain':'clean'}`;
+  const key=effectKey();
   if(photo.processedKey===key&&photo.processedCanvas) return photo.processedCanvas;
   const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;drawPhotoEffect(canvas.getContext('2d'),photo.img,0,0,canvas.width,canvas.height);
   photo.processedKey=key;photo.processedCanvas=canvas;photo.previewKey='';photo.previewSource='';return canvas;
@@ -88,7 +92,7 @@ function getLensRenderer() {
   if(!gl) {lensRenderer=null;return null;}
   try {
     const vertex=createLensShader(gl,gl.VERTEX_SHADER,'attribute vec2 a_position;varying vec2 v_uv;void main(){v_uv=(a_position+1.0)*0.5;gl_Position=vec4(a_position,0.0,1.0);}');
-    const fragment=createLensShader(gl,gl.FRAGMENT_SHADER,'precision mediump float;varying vec2 v_uv;uniform sampler2D u_texture;uniform vec2 u_crop;uniform float u_strength;uniform float u_mirror;void main(){vec2 p=v_uv*2.0-1.0;float r=length(p);if(r<1.0&&r>0.0001){float sourceR=r*(1.0-u_strength*pow(1.0-r,2.0));p*=sourceR/r;}vec2 uv=(p+1.0)*0.5;uv=(uv-0.5)*u_crop+0.5;uv.y=1.0-uv.y;if(u_mirror>0.5)uv.x=1.0-uv.x;vec4 color=texture2D(u_texture,uv);float vignette=smoothstep(0.64,1.12,r);color.rgb*=1.0-vignette*0.48;gl_FragColor=color;}');
+    const fragment=createLensShader(gl,gl.FRAGMENT_SHADER,'precision mediump float;varying vec2 v_uv;uniform sampler2D u_texture;uniform vec2 u_crop;uniform float u_strength;uniform float u_mirror;void main(){vec2 p=v_uv*2.0-1.0;float r=length(p);if(r<1.0&&r>0.0001){float sourceR=r*(1.0-u_strength*pow(1.0-r,2.0));p*=sourceR/r;}vec2 uv=(p+1.0)*0.5;uv=(uv-0.5)*u_crop+0.5;uv.y=1.0-uv.y;if(u_mirror>0.5)uv.x=1.0-uv.x;vec4 color=texture2D(u_texture,uv);float vignette=smoothstep(0.7,1.12,r);color.rgb*=1.0-vignette*0.27;gl_FragColor=color;}');
     const program=gl.createProgram();gl.attachShader(program,vertex);gl.attachShader(program,fragment);gl.linkProgram(program);
     if(!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program)||'Lens program failed to link.');
     const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
@@ -108,7 +112,7 @@ function drawLensPreview() {
     let cropX=1,cropY=1;if(sourceAspect>targetAspect)cropX=targetAspect/sourceAspect;else cropY=sourceAspect/targetAspect;
     gl.viewport(0,0,canvas.width,canvas.height);gl.useProgram(program);gl.bindTexture(gl.TEXTURE_2D,texture);
     try {gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);} catch(error) {lensAnimation=requestAnimationFrame(drawLensPreview);return;}
-    gl.enableVertexAttribArray(renderer.position);gl.vertexAttribPointer(renderer.position,2,gl.FLOAT,false,0,0);gl.uniform2f(renderer.crop,cropX,cropY);gl.uniform1f(renderer.strength,.86);gl.uniform1f(renderer.mirror,state.mode==='camera'&&state.mirrored?1:0);gl.drawArrays(gl.TRIANGLES,0,6);
+    gl.enableVertexAttribArray(renderer.position);gl.vertexAttribPointer(renderer.position,2,gl.FLOAT,false,0,0);gl.uniform2f(renderer.crop,cropX,cropY);gl.uniform1f(renderer.strength,state.fisheyeStrength);gl.uniform1f(renderer.mirror,state.mode==='camera'&&state.mirrored?1:0);gl.drawArrays(gl.TRIANGLES,0,6);
   }
   lensAnimation=requestAnimationFrame(drawLensPreview);
 }
@@ -119,7 +123,7 @@ function setLensPreview() {
   if(enabled) lensAnimation=requestAnimationFrame(drawLensPreview);
 }
 function lockSettings(locked) {
-  document.querySelectorAll('.layout-button, .filter, #grainToggle, #timer, #uploadButton, #mirrorButton, #switchCameraButton, #quickSwitchCamera, #useCamera').forEach(el => {el.disabled=locked;});
+  document.querySelectorAll('.layout-button, .filter, #grainToggle, #lensStrength, #timer, #uploadButton, #mirrorButton, #switchCameraButton, #quickSwitchCamera, #useCamera').forEach(el => {el.disabled=locked;});
 }
 function refresh() {
   const n = total();
@@ -164,6 +168,7 @@ function refresh() {
   $('viewfinder').classList.toggle('session-active',state.running);
   const done=complete();
   $('viewfinder').classList.toggle('session-complete',done);
+  $('lensStrengthControl').hidden=state.filter!=='fisheye';
   $('cameraConsole').hidden=!['camera','demo'].includes(state.mode);
   $('poseGuideArt').hidden=!['camera','demo'].includes(state.mode) || done;
   if(!state.running) updatePoseGuide(Math.min(filled,n-1));
@@ -438,7 +443,7 @@ function drawFisheye(c,img,x,y,w,h) {
   const source=document.createElement('canvas');source.width=width;source.height=height;
   const sourceContext=source.getContext('2d',{willReadFrequently:true});sourceContext.filter=filters.fisheye;drawCover(sourceContext,img,0,0,width,height);
   const input=sourceContext.getImageData(0,0,width,height),output=sourceContext.createImageData(width,height),src=input.data,dst=output.data;
-  const halfW=width/2,halfH=height/2,strength=.86;
+  const halfW=width/2,halfH=height/2,strength=state.fisheyeStrength;
   for(let py=0;py<height;py++) {
     const ny=(py+.5-halfH)/halfH;
     for(let px=0;px<width;px++) {
@@ -454,8 +459,8 @@ function drawFisheye(c,img,x,y,w,h) {
   }
   c.putImageData(output,Math.round(x),Math.round(y));
   c.save();c.beginPath();c.rect(x,y,w,h);c.clip();
-  const vignette=c.createRadialGradient(x+w/2,y+h/2,w*.16,x+w/2,y+h/2,w*.68);vignette.addColorStop(0,'rgba(255,255,255,0)');vignette.addColorStop(.66,'rgba(255,255,255,0)');vignette.addColorStop(1,'rgba(12,13,17,.52)');c.fillStyle=vignette;c.fillRect(x,y,w,h);
-  c.strokeStyle='rgba(225,242,246,.28)';c.lineWidth=Math.max(3,w*.012);c.beginPath();c.ellipse(x+w/2,y+h/2,w*.485,h*.485,0,0,Math.PI*2);c.stroke();c.restore();
+  const vignette=c.createRadialGradient(x+w/2,y+h/2,w*.18,x+w/2,y+h/2,w*.7);vignette.addColorStop(0,'rgba(255,255,255,0)');vignette.addColorStop(.72,'rgba(255,255,255,0)');vignette.addColorStop(1,'rgba(12,13,17,.28)');c.fillStyle=vignette;c.fillRect(x,y,w,h);
+  c.strokeStyle='rgba(225,242,246,.16)';c.lineWidth=Math.max(2,w*.007);c.beginPath();c.ellipse(x+w/2,y+h/2,w*.488,h*.488,0,0,Math.PI*2);c.stroke();c.restore();
 }
 function drawHalation(c,x,y,w,h) {
   c.save();c.globalCompositeOperation='screen';
@@ -477,6 +482,12 @@ function drawAtmosphere(c,x,y,w,h) {
   } else if(state.filter==='blush') {
     c.globalCompositeOperation='screen';c.globalAlpha=.34;
     const wash=c.createRadialGradient(x+w*.45,y+h*.38,0,x+w*.45,y+h*.38,w*.75);wash.addColorStop(0,'#ffd9df');wash.addColorStop(1,'#d76082');c.fillStyle=wash;c.fillRect(x,y,w,h);
+  } else if(state.filter==='dream') {
+    c.globalCompositeOperation='screen';c.globalAlpha=.38;
+    const bloom=c.createRadialGradient(x+w*.45,y+h*.35,0,x+w*.45,y+h*.35,w*.72);bloom.addColorStop(0,'#fff9ff');bloom.addColorStop(.48,'#efd9ff');bloom.addColorStop(1,'rgba(178,151,232,0)');c.fillStyle=bloom;c.fillRect(x,y,w,h);
+  } else if(state.filter==='film400') {
+    c.globalCompositeOperation='soft-light';c.globalAlpha=.34;
+    const film=c.createLinearGradient(x,y,x+w,y+h);film.addColorStop(0,'#e9b179');film.addColorStop(.5,'#b5b98a');film.addColorStop(1,'#a05f54');c.fillStyle=film;c.fillRect(x,y,w,h);
   } else if(state.filter==='ccd') {
     c.globalCompositeOperation='screen';
     const flash=c.createRadialGradient(x+w*.5,y+h*.12,0,x+w*.5,y+h*.12,w*.72);flash.addColorStop(0,'rgba(255,255,232,.72)');flash.addColorStop(.26,'rgba(255,225,182,.32)');flash.addColorStop(1,'rgba(71,155,211,0)');c.fillStyle=flash;c.fillRect(x,y,w,h);
@@ -495,6 +506,16 @@ function drawAtmosphere(c,x,y,w,h) {
   }
   c.restore();
 }
+function drawPrism(c,x,y,w,h) {
+  const left=Math.max(0,Math.round(x)),top=Math.max(0,Math.round(y)),width=Math.min(c.canvas.width-left,Math.max(1,Math.round(w))),height=Math.min(c.canvas.height-top,Math.max(1,Math.round(h)));
+  const image=c.getImageData(left,top,width,height),source=new Uint8ClampedArray(image.data),shift=Math.max(2,Math.round(width*.009));
+  for(let py=0;py<height;py++) for(let px=0;px<width;px++) {
+    const out=(py*width+px)*4,red=(py*width+Math.max(0,px-shift))*4,blue=(py*width+Math.min(width-1,px+shift))*4;
+    image.data[out]=source[red];image.data[out+2]=source[blue+2];
+  }
+  c.putImageData(image,left,top);c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.globalCompositeOperation='screen';c.globalAlpha=.42;
+  const flare=c.createLinearGradient(x,y+h,x+w,y);flare.addColorStop(.35,'rgba(255,255,255,0)');flare.addColorStop(.49,'rgba(255,176,218,.3)');flare.addColorStop(.52,'rgba(166,234,255,.34)');flare.addColorStop(.66,'rgba(255,255,255,0)');c.fillStyle=flare;c.fillRect(x,y,w,h);c.restore();
+}
 function drawGrain(c,x,y,w,h,amount=.13) {
   const grain=document.createElement('canvas');grain.width=96;grain.height=72;
   const gc=grain.getContext('2d'),image=gc.createImageData(grain.width,grain.height);
@@ -510,8 +531,9 @@ function drawPhotoEffect(c,img,x,y,w,h) {
   else drawCover(c,img,x,y,w,h);
   c.restore();
   drawAtmosphere(c,x,y,w,h);
+  if(state.filter==='prism') drawPrism(c,x,y,w,h);
   if(state.filter==='halation') drawHalation(c,x,y,w,h);
-  if(state.grain || state.filter==='ccd') drawGrain(c,x,y,w,h,state.grain ? .2 : .16);
+  if(state.grain || ['ccd','film400'].includes(state.filter)) drawGrain(c,x,y,w,h,state.grain ? .2 : state.filter==='ccd'?.16:.11);
 }
 function renderSheet() {
   const canvas=$('photoSheet'),l=layouts[state.layout];
@@ -639,6 +661,7 @@ document.querySelectorAll('[data-layout]').forEach(button=>button.addEventListen
 document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{state.color=button.dataset.color;choose('[data-color]',button);renderSheet();}));
 document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{state.filter=button.dataset.filter;choose('[data-filter]',button);setLiveStyles();refresh();}));
 $('grainToggle').addEventListener('change',event=>{state.grain=event.target.checked;setLiveStyles();refresh();toast(state.grain?'Film grain is on.':'Film grain is off.');});
+$('lensStrength').addEventListener('input',event=>{state.fisheyeStrength=Number(event.target.value)/100;$('lensStrengthValue').value=`${event.target.value}%`;setLiveStyles();refresh();});
 $('caption').addEventListener('input',renderSheet);
 $('uploadButton').addEventListener('click',()=>$('photoUpload').click());
 $('photoUpload').addEventListener('change',uploadPhotos);
@@ -666,8 +689,12 @@ $('sealLetter').addEventListener('click',()=>{
 $('envelope').addEventListener('click',()=>{$('envelope').classList.add('opened');$('envelopeHint').hidden=true;$('openLetter').hidden=false;});
 $('editLetter').addEventListener('click',()=>{$('letterEditor').hidden=false;$('sealedLetter').hidden=true;});
 $('downloadLetter').addEventListener('click',saveLetter);
+$('enterBooth').addEventListener('click',event=>{
+  event.preventDefault();document.body.classList.remove('landing-active');
+  requestAnimationFrame(()=>{$('booth').scrollIntoView({block:'start'});setTimeout(()=>enableCamera('user'),180);});
+});
 window.addEventListener('pagehide',()=>{cameraRequest++;state.runId++;state.running=false;stopCamera();cancelAnimationFrame(demoAnimation);cancelAnimationFrame(lensAnimation);});
-window.addEventListener('pageshow',event=>{if(event.persisted){state.mode=null;state.facing='user';state.mirrored=true;$('startScreen').hidden=false;$('demoCanvas').hidden=true;$('switchCameraButton').hidden=true;$('mirrorButton').hidden=true;$('cameraStatus').textContent='Camera is off';$('cameraStatus').classList.remove('live');lockSettings(false);refresh();setTimeout(()=>enableCamera('user'),120);}});
+window.addEventListener('pageshow',event=>{if(event.persisted){state.mode=null;state.facing='user';state.mirrored=true;$('startScreen').hidden=false;$('demoCanvas').hidden=true;$('switchCameraButton').hidden=true;$('mirrorButton').hidden=true;$('cameraStatus').textContent='Camera is off';$('cameraStatus').classList.remove('live');lockSettings(false);refresh();if(!document.body.classList.contains('landing-active'))setTimeout(()=>enableCamera('user'),120);}});
 
 // Add depth on pointer devices and gentle entrance motion without affecting touch use.
 if(window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
@@ -699,4 +726,3 @@ document.addEventListener('keydown',event=>{
 });
 refresh();
 document.fonts.ready.then(renderSheet);
-window.addEventListener('load',()=>setTimeout(()=>{if(!state.mode)enableCamera('user');},120),{once:true});
