@@ -23,6 +23,7 @@ const filters = {
 };
 const poses = ['Your favourite smile.', 'A little shy, a little cute.', 'Get close. A little closer.', 'Your best serious face.', 'One for the silly side.', 'One last moment. Just be you.'];
 const momentLabels = ['the first smile', 'a little closer', 'caught laughing', 'our serious face', 'the silly one', 'just like this'];
+const poseGuideNames = ['Frame your face', 'Peace by your cheek', 'Make a little heart', 'Stay inside the frame', 'Go a little silly', 'One last natural smile'];
 const state = {layout:'six', color:'cream', filter:'original', photos:Array(6).fill(null), stream:null,
   mode:null, facing:'user', mirrored:true, grain:false, running:false, runId:0, retake:null, capturedAt:null, demoFrame:0};
 let toastTimeout;
@@ -38,6 +39,11 @@ function toast(message) {
 function total() { return layouts[state.layout].count; }
 function count() { return state.photos.slice(0,total()).filter(Boolean).length; }
 function complete() { return count() === total(); }
+function updatePoseGuide(index=0) {
+  const guide=Math.max(0,Math.min(index,poseGuideNames.length-1));
+  $('poseGuideUse').setAttribute('href',`#pose-guide-${guide+1}`);
+  $('poseGuideName').textContent=poseGuideNames[guide];
+}
 function choose(group, button) {
   document.querySelectorAll(group).forEach(el => {
     const active = el === button;
@@ -54,7 +60,7 @@ function setLiveStyles() {
   $('viewfinder').classList.toggle('effect-grain',state.grain || state.filter==='ccd');
 }
 function lockSettings(locked) {
-  document.querySelectorAll('.layout-button, .filter, #grainToggle, #timer, #uploadButton, #mirrorButton, #switchCameraButton, #useCamera').forEach(el => {el.disabled=locked;});
+  document.querySelectorAll('.layout-button, .filter, #grainToggle, #timer, #uploadButton, #mirrorButton, #switchCameraButton, #quickSwitchCamera, #useCamera').forEach(el => {el.disabled=locked;});
 }
 function refresh() {
   const n = total();
@@ -98,8 +104,25 @@ function refresh() {
   $('liveCaptureCount').textContent=`${filled} / ${n}`;
   $('liveCaptureRail').hidden=!state.running && filled===0;
   $('viewfinder').classList.toggle('session-active',state.running);
-  $('viewfinder').classList.toggle('session-complete',complete());
   const done=complete();
+  $('viewfinder').classList.toggle('session-complete',done);
+  $('cameraConsole').hidden=!['camera','demo'].includes(state.mode);
+  $('poseGuideArt').hidden=!['camera','demo'].includes(state.mode) || done;
+  if(!state.running) updatePoseGuide(Math.min(filled,n-1));
+  let latestIndex=-1;
+  for(let i=n-1;i>=0;i--) {if(state.photos[i]) {latestIndex=i;break;}}
+  const latest=latestIndex>=0?state.photos[latestIndex]:null;
+  $('latestThumbnail').disabled=!latest || state.running;
+  $('latestThumbnail').setAttribute('aria-label',latest?`Review photo ${latestIndex+1}`:'No photos captured yet');
+  $('latestThumbnailImage').hidden=!latest;
+  $('latestThumbnailEmpty').hidden=Boolean(latest);
+  if(latest) {
+    $('latestThumbnailImage').src=latest.src;
+    $('latestThumbnailImage').style.filter=filters[state.filter];
+  }
+  $('quickShutter').disabled=!state.mode || state.running || (done && state.retake===null);
+  $('quickShutter').setAttribute('aria-label',state.retake!==null?`Retake photo ${state.retake+1}`:filled?'Continue photo session':'Start photo session');
+  $('quickSwitchCamera').disabled=state.mode!=='camera' || state.running;
   ['downloadButton','letterButton','printButton'].forEach(id=>{$(id).disabled=!done || state.running;});
   $('startCapture').disabled=!state.mode || state.running || (done && state.retake===null);
   $('startCapture').hidden=state.running;
@@ -131,6 +154,8 @@ function updateFacingControls() {
   $('switchCameraButton').title=`Switch to ${nextLabel.toLowerCase()}`;
   $('switchCameraButton').setAttribute('aria-label',`Switch to ${nextLabel.toLowerCase()}`);
   $('viewfinderMode').textContent=rear?'LIVE · REAR CAMERA':'LIVE · FRONT CAMERA';
+  $('quickSwitchCamera').setAttribute('aria-label',`Switch to ${nextLabel.toLowerCase()}`);
+  $('quickSwitchCamera').title=`Switch to ${nextLabel.toLowerCase()}`;
   $('mirrorButton').setAttribute('aria-pressed',String(state.mirrored));
 }
 async function enableCamera(nextFacing=state.facing) {
@@ -140,6 +165,7 @@ async function enableCamera(nextFacing=state.facing) {
   const previousFacing=state.facing;
   $('enableCamera').disabled=true;
   $('switchCameraButton').disabled=true;
+  $('quickSwitchCamera').disabled=true;
   $('enableCamera').textContent=switching?'Switching camera…':'Opening your camera…';
   $('cameraError').hidden=true;
   $('viewfinder').classList.remove('error');
@@ -205,6 +231,7 @@ async function enableCamera(nextFacing=state.facing) {
       $('enableCamera').disabled=false;
       $('switchCameraButton').disabled=false;
       $('enableCamera').innerHTML='<svg><use href="#i-camera"/></svg> Turn on my camera';
+      refresh();
     }
   }
 }
@@ -273,6 +300,7 @@ async function captureSession() {
   try {
     for(const i of indices) {
       if(id!==state.runId) return;
+      updatePoseGuide(i);
       $('poseCount').textContent=`POSE ${i+1} OF ${total()}`;
       $('poseText').textContent=poses[i];
       $('sessionTitle').textContent=`Making moment ${i+1} of ${total()}.`;
@@ -496,6 +524,11 @@ $('tryDemo').addEventListener('click',startDemo);
 $('useCamera').addEventListener('click',()=>{$('startScreen').hidden=false;enableCamera();});
 $('cameraStatus').addEventListener('click',()=>{if(state.mode==='demo'&&!state.running){$('startScreen').hidden=false;enableCamera();}});
 $('startCapture').addEventListener('click',captureSession);
+$('quickShutter').addEventListener('click',captureSession);
+$('quickSwitchCamera').addEventListener('click',()=>enableCamera(state.facing==='environment'?'user':'environment'));
+$('latestThumbnail').addEventListener('click',()=>{
+  for(let i=total()-1;i>=0;i--) {if(state.photos[i]) {selectRetake(i);break;}}
+});
 $('cancelCapture').addEventListener('click',()=>cancelSession());
 $('againOverlay').addEventListener('click',resetSession);
 $('finishDownload').addEventListener('click',()=>{if(complete())saveCanvas($('photoSheet'),fileName());});
@@ -536,7 +569,7 @@ $('envelope').addEventListener('click',()=>{$('envelope').classList.add('opened'
 $('editLetter').addEventListener('click',()=>{$('letterEditor').hidden=false;$('sealedLetter').hidden=true;});
 $('downloadLetter').addEventListener('click',saveLetter);
 window.addEventListener('pagehide',()=>{cameraRequest++;state.runId++;state.running=false;stopCamera();cancelAnimationFrame(demoAnimation);});
-window.addEventListener('pageshow',event=>{if(event.persisted){state.mode=null;state.facing='user';state.mirrored=true;$('startScreen').hidden=false;$('demoCanvas').hidden=true;$('switchCameraButton').hidden=true;$('mirrorButton').hidden=true;$('cameraStatus').textContent='Camera is off';$('cameraStatus').classList.remove('live');lockSettings(false);refresh();}});
+window.addEventListener('pageshow',event=>{if(event.persisted){state.mode=null;state.facing='user';state.mirrored=true;$('startScreen').hidden=false;$('demoCanvas').hidden=true;$('switchCameraButton').hidden=true;$('mirrorButton').hidden=true;$('cameraStatus').textContent='Camera is off';$('cameraStatus').classList.remove('live');lockSettings(false);refresh();setTimeout(()=>enableCamera('user'),120);}});
 
 // Add depth on pointer devices and gentle entrance motion without affecting touch use.
 if(window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
@@ -568,3 +601,4 @@ document.addEventListener('keydown',event=>{
 });
 refresh();
 document.fonts.ready.then(renderSheet);
+window.addEventListener('load',()=>setTimeout(()=>{if(!state.mode)enableCamera('user');},120),{once:true});
