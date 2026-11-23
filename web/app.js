@@ -9,17 +9,17 @@ const layouts = {
 const colors = {cream:'#fffaf0', rose:'#efd2d2', sage:'#d9dfcd', blue:'#d6dfea', ink:'#353331'};
 const filters = {
   original:'none',
-  soft:'brightness(1.08) contrast(.9) saturate(.92)',
-  fresh:'brightness(1.16) contrast(.88) saturate(.9) sepia(.04) hue-rotate(145deg)',
-  warm:'sepia(.2) saturate(1.12) contrast(.96) brightness(1.04)',
-  blush:'sepia(.18) saturate(1.18) hue-rotate(322deg) brightness(1.05) contrast(.95)',
-  ccd:'brightness(1.08) contrast(1.12) saturate(1.2)',
-  vintage:'sepia(.43) saturate(.72) contrast(.88) brightness(1.06)',
-  cinema:'contrast(1.18) saturate(.78) brightness(.92) sepia(.1)',
-  cool:'sepia(.08) hue-rotate(145deg) saturate(.95) brightness(1.03) contrast(1.02)',
-  halation:'brightness(1.04) contrast(.96) saturate(1.13)',
-  fisheye:'contrast(1.06) saturate(1.08) brightness(1.02)',
-  mono:'grayscale(1) contrast(1.08)'
+  soft:'brightness(1.15) contrast(.78) saturate(.8)',
+  fresh:'brightness(1.24) contrast(.82) saturate(1.08) sepia(.16) hue-rotate(145deg)',
+  warm:'sepia(.4) saturate(1.42) contrast(1.04) brightness(1.05)',
+  blush:'sepia(.3) saturate(1.5) hue-rotate(310deg) brightness(1.1) contrast(.92)',
+  ccd:'brightness(1.18) contrast(1.28) saturate(1.55)',
+  vintage:'sepia(.7) saturate(.72) contrast(1.07) brightness(.92)',
+  cinema:'contrast(1.36) saturate(.72) brightness(.86) sepia(.18)',
+  cool:'sepia(.2) hue-rotate(150deg) saturate(1.42) brightness(1.02) contrast(1.15)',
+  halation:'brightness(1.1) contrast(1.06) saturate(1.38)',
+  fisheye:'contrast(1.14) saturate(1.24) brightness(1.04)',
+  mono:'grayscale(1) contrast(1.38) brightness(1.03)'
 };
 const poses = ['Your favourite smile.', 'A little shy, a little cute.', 'Get close. A little closer.', 'Your best serious face.', 'One for the silly side.', 'One last moment. Just be you.'];
 const momentLabels = ['the first smile', 'a little closer', 'caught laughing', 'our serious face', 'the silly one', 'just like this'];
@@ -54,6 +54,7 @@ function choose(group, button) {
 function setLiveStyles() {
   $('camera').style.filter = filters[state.filter];
   $('demoCanvas').style.filter = filters[state.filter];
+  $('viewfinder').dataset.filter=state.filter;
   $('camera').classList.toggle('mirrored',state.mirrored);
   $('viewfinder').classList.toggle('effect-fisheye',state.filter==='fisheye');
   $('viewfinder').classList.toggle('effect-halation',state.filter==='halation');
@@ -394,9 +395,40 @@ function drawFisheye(c,img,x,y,w,h) {
 function drawHalation(c,x,y,w,h) {
   c.save();c.globalCompositeOperation='screen';
   const glow=c.createRadialGradient(x+w*.72,y+h*.22,0,x+w*.72,y+h*.22,w*.58);
-  glow.addColorStop(0,'rgba(255,226,190,.32)');glow.addColorStop(.28,'rgba(255,105,83,.19)');glow.addColorStop(1,'rgba(155,34,48,0)');
+  glow.addColorStop(0,'rgba(255,238,203,.62)');glow.addColorStop(.25,'rgba(255,105,83,.38)');glow.addColorStop(.68,'rgba(177,40,56,.12)');glow.addColorStop(1,'rgba(155,34,48,0)');
   c.fillStyle=glow;c.fillRect(x,y,w,h);
-  c.strokeStyle='rgba(191,54,58,.12)';c.lineWidth=Math.max(8,w*.018);c.strokeRect(x,y,w,h);c.restore();
+  c.strokeStyle='rgba(191,54,58,.24)';c.lineWidth=Math.max(10,w*.024);c.strokeRect(x,y,w,h);c.restore();
+}
+function drawAtmosphere(c,x,y,w,h) {
+  if(['original','fisheye','mono','halation'].includes(state.filter)) return;
+  c.save();c.beginPath();c.rect(x,y,w,h);c.clip();
+  if(state.filter==='soft') {
+    c.globalCompositeOperation='screen';c.globalAlpha=.22;c.fillStyle='#fff8f1';c.fillRect(x,y,w,h);
+  } else if(state.filter==='fresh') {
+    c.globalCompositeOperation='screen';c.globalAlpha=.28;
+    const wash=c.createLinearGradient(x,y,x+w,y+h);wash.addColorStop(0,'#ecffff');wash.addColorStop(1,'#8edfe2');c.fillStyle=wash;c.fillRect(x,y,w,h);
+  } else if(state.filter==='warm') {
+    c.globalCompositeOperation='soft-light';c.globalAlpha=.4;c.fillStyle='#ff8c3f';c.fillRect(x,y,w,h);
+  } else if(state.filter==='blush') {
+    c.globalCompositeOperation='screen';c.globalAlpha=.34;
+    const wash=c.createRadialGradient(x+w*.45,y+h*.38,0,x+w*.45,y+h*.38,w*.75);wash.addColorStop(0,'#ffd9df');wash.addColorStop(1,'#d76082');c.fillStyle=wash;c.fillRect(x,y,w,h);
+  } else if(state.filter==='ccd') {
+    c.globalCompositeOperation='screen';
+    const flash=c.createRadialGradient(x+w*.5,y+h*.12,0,x+w*.5,y+h*.12,w*.72);flash.addColorStop(0,'rgba(255,255,232,.72)');flash.addColorStop(.26,'rgba(255,225,182,.32)');flash.addColorStop(1,'rgba(71,155,211,0)');c.fillStyle=flash;c.fillRect(x,y,w,h);
+    const edge=c.createLinearGradient(x,y,x+w,y);edge.addColorStop(0,'rgba(35,167,224,.23)');edge.addColorStop(.48,'rgba(255,255,255,0)');edge.addColorStop(1,'rgba(226,56,103,.24)');c.fillStyle=edge;c.fillRect(x,y,w,h);
+    c.globalCompositeOperation='source-over';c.fillStyle='rgba(255,255,255,.06)';for(let line=y;line<y+h;line+=Math.max(4,h*.025))c.fillRect(x,line,w,1);
+  } else if(state.filter==='vintage') {
+    c.globalCompositeOperation='multiply';c.globalAlpha=.24;c.fillStyle='#b87937';c.fillRect(x,y,w,h);
+    c.globalCompositeOperation='source-over';c.globalAlpha=1;
+    const vignette=c.createRadialGradient(x+w/2,y+h/2,w*.2,x+w/2,y+h/2,w*.72);vignette.addColorStop(0,'rgba(55,28,14,0)');vignette.addColorStop(.7,'rgba(55,28,14,.08)');vignette.addColorStop(1,'rgba(41,20,12,.48)');c.fillStyle=vignette;c.fillRect(x,y,w,h);
+  } else if(state.filter==='cinema') {
+    c.globalCompositeOperation='soft-light';c.globalAlpha=.42;
+    const grade=c.createLinearGradient(x,y,x+w,y+h);grade.addColorStop(0,'#1d7885');grade.addColorStop(.52,'#344457');grade.addColorStop(1,'#e17f43');c.fillStyle=grade;c.fillRect(x,y,w,h);
+    c.globalCompositeOperation='source-over';c.globalAlpha=.72;c.fillStyle='#08090b';c.fillRect(x,y,w,h*.065);c.fillRect(x,y+h-h*.065,w,h*.065);
+  } else if(state.filter==='cool') {
+    c.globalCompositeOperation='soft-light';c.globalAlpha=.46;c.fillStyle='#4aa8d8';c.fillRect(x,y,w,h);
+  }
+  c.restore();
 }
 function drawGrain(c,x,y,w,h,amount=.13) {
   const grain=document.createElement('canvas');grain.width=96;grain.height=72;
@@ -412,8 +444,9 @@ function drawPhotoEffect(c,img,x,y,w,h) {
   if(state.filter==='fisheye') drawFisheye(c,img,x,y,w,h);
   else drawCover(c,img,x,y,w,h);
   c.restore();
+  drawAtmosphere(c,x,y,w,h);
   if(state.filter==='halation') drawHalation(c,x,y,w,h);
-  if(state.grain || state.filter==='ccd') drawGrain(c,x,y,w,h,state.grain ? .17 : .1);
+  if(state.grain || state.filter==='ccd') drawGrain(c,x,y,w,h,state.grain ? .2 : .16);
 }
 function renderSheet() {
   const canvas=$('photoSheet'),l=layouts[state.layout];

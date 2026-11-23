@@ -820,3 +820,36 @@ html{scroll-behavior:smooth}
 @media(prefers-reduced-motion:reduce){
   .session-active .pose-guide-art svg,.session-active .quick-shutter span{animation:none}
 }
+
+/* Strong, visible live colour grades */
+.filter-wash{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .3s ease,background .3s ease;
+}
+.start-screen{z-index:2}
+.viewfinder[data-filter="soft"] .filter-wash{opacity:.28;background:rgba(255,246,239,.72);mix-blend-mode:screen}
+.viewfinder[data-filter="fresh"] .filter-wash{opacity:.38;background:linear-gradient(145deg,rgba(228,255,255,.76),rgba(81,207,218,.42));mix-blend-mode:screen}
+.viewfinder[data-filter="warm"] .filter-wash{opacity:.45;background:linear-gradient(145deg,rgba(255,183,95,.58),rgba(205,75,37,.27));mix-blend-mode:soft-light}
+.viewfinder[data-filter="blush"] .filter-wash{opacity:.42;background:radial-gradient(circle at 46% 38%,rgba(255,225,230,.72),rgba(229,95,135,.48) 75%);mix-blend-mode:screen}
+.viewfinder[data-filter="ccd"] .filter-wash{
+  opacity:.6;
+  background:
+    radial-gradient(circle at 50% 8%,rgba(255,255,226,.88),rgba(255,220,174,.3) 25%,transparent 65%),
+    linear-gradient(90deg,rgba(23,160,221,.24),transparent 35%,transparent 65%,rgba(225,47,100,.27));
+  mix-blend-mode:screen;
+}
+.viewfinder[data-filter="vintage"] .filter-wash{opacity:.58;background:radial-gradient(circle,rgba(187,125,61,.08) 30%,rgba(93,49,25,.2) 70%,rgba(39,20,13,.58));mix-blend-mode:multiply}
+.viewfinder[data-filter="cinema"] .filter-wash{
+  opacity:1;
+  background:
+    linear-gradient(180deg,rgba(5,7,10,.78) 0 6%,transparent 6% 94%,rgba(5,7,10,.78) 94%),
+    linear-gradient(145deg,rgba(15,116,132,.25),rgba(35,52,68,.08) 50%,rgba(223,103,48,.24));
+  mix-blend-mode:normal;
+}
+.viewfinder[data-filter="cool"] .filter-wash{opacity:.5;background:linear-gradient(145deg,rgba(80,187,225,.5),rgba(48,78,158,.34));mix-blend-mode:soft-light}
+.filter.active:before{transform:scale(1.18);box-shadow:0 0 0 3px rgba(255,255,255,.2),0 3px 10px rgba(0,0,0,.18)}
+.viewfinder.effect-halation:before,.film-frame.effect-halation:before{background:radial-gradient(circle at 72% 22%,rgba(255,239,204,.62),rgba(248,93,76,.38) 25%,rgba(151,35,51,.08) 64%)}

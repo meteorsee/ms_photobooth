@@ -57,6 +57,7 @@
         <div class="viewfinder" id="viewfinder">
           <video id="camera" autoplay muted playsinline></video>
           <canvas id="demoCanvas" width="1200" height="900" hidden></canvas>
+          <div class="filter-wash" aria-hidden="true"></div>
           <div class="viewfinder-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
           <div class="start-screen" id="startScreen">
             <div class="mini-flower" aria-hidden="true">✻</div>
@@ -113,7 +114,7 @@
             <button class="layout-button" data-layout="four" aria-pressed="false"><span class="layout-icon grid-four"><i></i><i></i><i></i><i></i></span><span>Four of us</span></button>
           </div>
           <div class="setting-row"><label id="frameLabel">Frame colour</label><div class="swatches" role="group" aria-labelledby="frameLabel"><button class="swatch active" data-color="cream" style="--swatch:#fffaf0" aria-label="Cream frame" aria-pressed="true"></button><button class="swatch" data-color="rose" style="--swatch:#efd2d2" aria-label="Rose frame" aria-pressed="false"></button><button class="swatch" data-color="sage" style="--swatch:#d9dfcd" aria-label="Sage frame" aria-pressed="false"></button><button class="swatch" data-color="blue" style="--swatch:#d6dfea" aria-label="Blue frame" aria-pressed="false"></button><button class="swatch" data-color="ink" style="--swatch:#353331" aria-label="Ink frame" aria-pressed="false"></button></div></div>
-          <div class="setting-heading filter-heading"><label id="filterLabel">A little atmosphere</label><span>12 looks</span></div>
+          <div class="setting-heading filter-heading"><label id="filterLabel">A little atmosphere</label><span>12 bold looks</span></div>
           <div class="filter-options" role="group" aria-labelledby="filterLabel"><button class="filter active" data-filter="original" aria-pressed="true">Original</button><button class="filter" data-filter="soft" aria-pressed="false">Soft</button><button class="filter" data-filter="fresh" aria-pressed="false">Fresh</button><button class="filter" data-filter="warm" aria-pressed="false">Warm</button><button class="filter" data-filter="blush" aria-pressed="false">Blush</button><button class="filter" data-filter="ccd" aria-pressed="false">CCD</button><button class="filter" data-filter="vintage" aria-pressed="false">Vintage</button><button class="filter" data-filter="cinema" aria-pressed="false">Cinema</button><button class="filter" data-filter="cool" aria-pressed="false">Cool</button><button class="filter" data-filter="halation" aria-pressed="false">Halation</button><button class="filter" data-filter="fisheye" aria-pressed="false">Fisheye</button><button class="filter" data-filter="mono" aria-pressed="false">B & W</button></div>
           <label class="grain-control" for="grainToggle"><span><strong>Film grain</strong><small>Add texture over any look</small></span><input id="grainToggle" type="checkbox"><i aria-hidden="true"></i></label>
           <div class="caption-field"><label for="caption">Words to remember</label><input id="caption" type="text" value="little moments, big feelings." maxlength="48" autocomplete="off"><svg aria-hidden="true"><use href="#i-heart"/></svg></div>
