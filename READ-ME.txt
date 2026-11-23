@@ -1,0 +1,71 @@
+TO YOU. - LOCAL PHOTOBOOTH FOR WINDOWS
+
+SETUP
+1. Extract ALL contents of PhotoBooth-local.zip into:
+   C:\Users\MS\Desktop\PhotoBooth
+
+   The result should include:
+   C:\Users\MS\Desktop\PhotoBooth\START-PhotoBooth.bat
+   C:\Users\MS\Desktop\PhotoBooth\server.py
+   C:\Users\MS\Desktop\PhotoBooth\web\index.html
+
+2. If Python is not installed, install a current Python 3 release from:
+   https://www.python.org/downloads/windows/
+   The launcher uses the Python launcher (py) or Python on your PATH.
+   Python 3.9 or newer is required. No extra Python packages are needed.
+
+3. Double-click START-PhotoBooth.bat.
+   Your default browser opens http://localhost:8080/.
+   If 8080 is busy, it tries ports 8081-8089 and opens the selected address.
+   The correct address is always printed in the launcher window.
+
+4. Use a current Chrome or Edge browser. Click "Turn on my camera" and
+   allow camera access when prompted.
+
+Keep the launcher window open. Close it, or press Ctrl+C, to stop hosting.
+To start again later, double-click START-PhotoBooth.bat again.
+
+WHAT IS INCLUDED
+- The existing "to you." photo booth, including its fonts and styling.
+- Six-photo, classic-strip, and four-photo layouts.
+- Frame colours, filters, countdowns, retakes, and photo uploads.
+- PNG keepsakes, printable sheets, and downloadable photo-and-note letters.
+- The demo mode, which works without a camera.
+
+The server only listens on your own laptop (127.0.0.1). It serves the web
+folder and does not accept photo uploads. Photos and letters are assembled
+in your browser. "Use my photos" reads files directly in the browser.
+There is no account, hosted service, build step, or npm install needed.
+Once Python is installed, the booth can be used without internet access.
+
+SAVING PHOTOS
+Click "Save my keepsake" or "Save photo & note" to download a PNG.
+Your browser controls its download destination, usually Downloads.
+Photos are held in memory, so save before refreshing or closing the page.
+
+TROUBLESHOOTING
+- Extract the ZIP before running the launcher; do not run inside the ZIP.
+- If the page does not open automatically, copy the address printed in
+  the launcher window into Chrome or Edge.
+- Use the localhost address instead of opening web/index.html directly.
+- If camera access was blocked, change the camera permission for localhost
+  in your browser's site settings, then reload the page.
+- If the camera is busy, close other camera or video-call apps.
+- After stopping the server, close the booth tab to release the camera.
+- You can always use "Try the demo" or "Use my photos" instead.
+
+OPTIONAL COMMAND PROMPT START
+cd /d "C:\Users\MS\Desktop\PhotoBooth"
+py -3 server.py
+
+To choose a different port:
+py -3 server.py --port 8090
+
+To start without opening a browser automatically:
+py -3 server.py --no-browser
+
+SERVER REFERENCE
+Python standard-library HTTP server:
+https://docs.python.org/3/library/http.server.html
+
+The bundled font licence is in web/fonts/LICENSE.
