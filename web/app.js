@@ -22,6 +22,7 @@ const filters = {
   mono:'grayscale(1) contrast(1.08)'
 };
 const poses = ['Your favourite smile.', 'A little shy, a little cute.', 'Get close. A little closer.', 'Your best serious face.', 'One for the silly side.', 'One last moment. Just be you.'];
+const momentLabels = ['the first smile', 'a little closer', 'caught laughing', 'our serious face', 'the silly one', 'just like this'];
 const state = {layout:'six', color:'cream', filter:'original', photos:Array(6).fill(null), stream:null,
   mode:null, facing:'user', mirrored:true, grain:false, running:false, runId:0, retake:null, capturedAt:null, demoFrame:0};
 let toastTimeout;
@@ -85,6 +86,19 @@ function refresh() {
     }
     $('filmTray').append(button);
   }
+  $('liveCaptureFrames').replaceChildren();
+  for(let i=0;i<n;i++) {
+    const frame=document.createElement('span');
+    frame.className='live-capture-frame'+(state.photos[i]?' captured':'')+(state.running && !state.photos[i] && i===filled?' current':'');
+    if(state.photos[i]) {
+      const img=document.createElement('img');img.src=state.photos[i].src;img.alt='';img.style.filter=filters[state.filter];frame.append(img);
+    } else frame.textContent=String(i+1);
+    $('liveCaptureFrames').append(frame);
+  }
+  $('liveCaptureCount').textContent=`${filled} / ${n}`;
+  $('liveCaptureRail').hidden=!state.running && filled===0;
+  $('viewfinder').classList.toggle('session-active',state.running);
+  $('viewfinder').classList.toggle('session-complete',complete());
   const done=complete();
   ['downloadButton','letterButton','printButton'].forEach(id=>{$(id).disabled=!done || state.running;});
   $('startCapture').disabled=!state.mode || state.running || (done && state.retake===null);
@@ -276,6 +290,7 @@ async function captureSession() {
       if(id!==state.runId) return;
       state.photos[i]=photo;
       if(!state.capturedAt) state.capturedAt=new Date();
+      if('vibrate' in navigator) navigator.vibrate(35);
       $('flash').classList.remove('fire');void $('flash').offsetWidth;$('flash').classList.add('fire');
       refresh();await delay(650);
     }
@@ -391,7 +406,7 @@ function renderSheet() {
       for(let petal=0;petal<7;petal++) {const a=petal*Math.PI*2/7;c.beginPath();c.ellipse(x+pw/2+Math.sin(a)*ph*.23,y+ph*.44+Math.cos(a)*ph*.23,ph*.08,ph*.12,-a,0,Math.PI*2);c.stroke();}
       c.fillStyle=dark?'#c4b59d':'#9f8c72';c.textAlign='center';c.font='italic '+Math.round(ph*.08)+'px Editorial, Georgia';c.fillText('a moment waiting to happen',x+pw/2,y+ph*.85);
     }
-    c.fillStyle=ink;c.textAlign='left';c.font='italic 13px Editorial, Georgia';c.fillText('moment studio',x,y+ph+16);
+    c.fillStyle=ink;c.textAlign='left';c.font='italic 13px Editorial, Georgia';c.fillText(photo?momentLabels[i]:'moment studio',x,y+ph+16);
   }
   const bottom=margin+l.rows*(ph+gap+8)-gap-8;
   c.fillStyle=ink;c.textAlign='center';
@@ -405,6 +420,7 @@ function renderSheet() {
   c.font='13px Arial';c.textAlign='left';c.fillText(label,margin,l.height-26);
   c.textAlign='right';c.fillText(state.photos.slice(0,total()).some(p=>p?.demo)?'DEMO · MOMENT STUDIO':'MOMENT STUDIO',l.width-margin,l.height-26);
   $('photoSheetWrap').style.width=state.layout==='strip'?'108px':'';
+  if(complete()) $('finishPreview').src=canvas.toDataURL('image/jpeg',.9);
 }
 function loadImage(src) {return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=src;});}
 function saveCanvas(canvas,name) {
@@ -482,6 +498,7 @@ $('cameraStatus').addEventListener('click',()=>{if(state.mode==='demo'&&!state.r
 $('startCapture').addEventListener('click',captureSession);
 $('cancelCapture').addEventListener('click',()=>cancelSession());
 $('againOverlay').addEventListener('click',resetSession);
+$('finishDownload').addEventListener('click',()=>{if(complete())saveCanvas($('photoSheet'),fileName());});
 $('switchCameraButton').addEventListener('click',()=>enableCamera(state.facing==='environment'?'user':'environment'));
 $('mirrorButton').addEventListener('click',()=>{state.mirrored=!state.mirrored;$('mirrorButton').setAttribute('aria-pressed',String(state.mirrored));setLiveStyles();toast(state.mirrored?'Photos will match your mirrored preview.':'Photos will save without mirroring.');});
 document.querySelectorAll('[data-layout]').forEach(button=>button.addEventListener('click',()=>{
