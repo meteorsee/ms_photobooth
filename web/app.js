@@ -138,7 +138,7 @@ function playPrintFinale() {
   overlay.classList.remove('printing','print-ready');
   void overlay.offsetWidth;
   overlay.classList.add('printing');
-  const wait=window.matchMedia('(prefers-reduced-motion:reduce)').matches?0:2900;
+  const wait=window.matchMedia('(prefers-reduced-motion:reduce)').matches?0:5400;
   printStatusTimer=setTimeout(()=>{
     if(overlay.hidden) return;
     overlay.classList.remove('printing');
