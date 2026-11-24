@@ -111,9 +111,18 @@
           <div class="countdown" id="countdown" hidden role="status" aria-live="assertive"></div>
           <div class="flash" id="flash"></div>
           <div class="finish-overlay" id="finishOverlay" hidden>
-            <div class="finish-card">
-              <img id="finishPreview" alt="Your finished photo keepsake">
-              <div class="finish-copy"><span>YOUR MOMENTS, TOGETHER</span><h2>That's a keeper.</h2><p>Your photo sheet is ready to save, share, or make all over again.</p><div class="finish-actions"><button id="finishDownload" class="finish-save"><svg><use href="#i-download"/></svg> Save keepsake</button><button id="againOverlay" class="light-button">Take another set</button></div></div>
+            <div class="finish-card print-finale">
+              <div class="printer-scene" aria-label="Your keepsake is printing">
+                <div class="photo-printer">
+                  <div class="printer-brand"><strong>MOMENT STUDIO</strong><span>PHOTO PRINT SYSTEM</span></div>
+                  <span class="printer-light" aria-hidden="true"></span>
+                  <div class="printer-slot" aria-hidden="true"><i></i></div>
+                  <div class="print-status" id="printStatus" role="status" aria-live="polite">PRINTING YOUR KEEPSAKE</div>
+                </div>
+                <div class="printed-photo"><img id="finishPreview" alt="Your finished photo keepsake"></div>
+                <div class="print-tray" aria-hidden="true"><span>COLLECT YOUR PRINT</span></div>
+              </div>
+              <div class="finish-copy"><span>FRESH FROM THE BOOTH</span><h2>Your memory just dropped.</h2><p>Pick up your keepsake, save it, or step back in for another round.</p><div class="finish-actions"><button id="finishDownload" class="finish-save"><svg><use href="#i-download"/></svg> Save keepsake</button><button id="againOverlay" class="light-button">Take another set</button></div></div>
             </div>
           </div>
           <div class="viewfinder-bottom"><span id="viewfinderHint">A good time looks good on you.</span><div class="viewfinder-actions"><button class="text-button use-camera" id="useCamera" hidden>Use my camera</button><button class="camera-switch-button" id="switchCameraButton" title="Switch to rear camera" aria-label="Switch to rear camera" hidden><svg><use href="#i-switch-camera"/></svg><span id="cameraFacingLabel">Rear camera</span></button><button class="round-button" id="mirrorButton" title="Mirror photo" aria-label="Mirror photo" aria-pressed="true" hidden><svg><use href="#i-flip"/></svg></button></div></div>

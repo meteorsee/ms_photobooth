@@ -36,6 +36,8 @@ let demoAnimation;
 let lensAnimation;
 let lensRenderer;
 let cameraRequest = 0;
+let printFinalePlayed = false;
+let printStatusTimer;
 
 function toast(message) {
   $('toast').textContent = message;
@@ -127,6 +129,26 @@ function setLensPreview() {
 function lockSettings(locked) {
   document.querySelectorAll('.layout-button, .filter, #grainToggle, #lensStrength, #timer, #uploadButton, #mirrorButton, #switchCameraButton, #quickSwitchCamera, #useCamera').forEach(el => {el.disabled=locked;});
 }
+function playPrintFinale() {
+  const overlay=$('finishOverlay');
+  clearTimeout(printStatusTimer);
+  $('finishDownload').disabled=true;
+  $('againOverlay').disabled=true;
+  $('printStatus').textContent='PRINTING YOUR KEEPSAKE';
+  overlay.classList.remove('printing','print-ready');
+  void overlay.offsetWidth;
+  overlay.classList.add('printing');
+  const wait=window.matchMedia('(prefers-reduced-motion:reduce)').matches?0:2900;
+  printStatusTimer=setTimeout(()=>{
+    if(overlay.hidden) return;
+    overlay.classList.remove('printing');
+    overlay.classList.add('print-ready');
+    $('printStatus').textContent='PRINT READY · TAKE YOUR MEMORY';
+    $('finishDownload').disabled=false;
+    $('againOverlay').disabled=false;
+    if('vibrate' in navigator) navigator.vibrate([28,45,55]);
+  },wait);
+}
 function refresh() {
   const n = total();
   const filled = count();
@@ -169,6 +191,7 @@ function refresh() {
   $('liveCaptureRail').hidden=!state.running && filled===0;
   $('viewfinder').classList.toggle('session-active',state.running);
   const done=complete();
+  const showFinale=done && state.retake===null && !state.running;
   $('viewfinder').classList.toggle('session-complete',done);
   $('lensStrengthControl').hidden=state.filter!=='fisheye';
   $('cameraConsole').hidden=!['camera','demo'].includes(state.mode);
@@ -206,10 +229,20 @@ function refresh() {
       $('sessionDescription').textContent=state.mode?`One click. ${n-filled} photos. All the good feelings.`:'Allow your camera, or use your own photos.';
       $('captureLabel').textContent=filled?'Continue photo session':'Start photo session';
     }
-    $('finishOverlay').hidden=!done || state.retake!==null;
+    $('finishOverlay').hidden=!showFinale;
   }
   $('previewHint').textContent=done?'Made by you. Ready to keep.':filled?`${filled} of ${n} moments, tucked in.`:'A few poses from now, this will be all you.';
   renderSheet();
+  if(showFinale && !printFinalePlayed) {
+    printFinalePlayed=true;
+    requestAnimationFrame(playPrintFinale);
+  } else if(!showFinale) {
+    printFinalePlayed=false;
+    clearTimeout(printStatusTimer);
+    $('finishOverlay').classList.remove('printing','print-ready');
+    $('finishDownload').disabled=false;
+    $('againOverlay').disabled=false;
+  }
 }
 
 function updateFacingControls() {
@@ -389,7 +422,7 @@ async function captureSession() {
     }
     if(id===state.runId) {
       state.retake=null;
-      toast(complete()?'Your keepsake is ready. Make it yours, then save it.':'Moment captured.');
+      toast(complete()?'Your keepsake is printing. Pick it up when it drops.':'Moment captured.');
     }
   } catch(error) {
     toast('That photo could not be captured. Check your camera and try again.');
@@ -599,7 +632,7 @@ async function uploadPhotos(event) {
     }));
     state.photos=Array(6).fill(null);photos.forEach((p,i)=>state.photos[i]=p);
     state.capturedAt=new Date();state.retake=null;refresh();
-    toast(complete()?'Your photos are in. Add your own little touch.':`${photos.length} photos added. Capture the remaining moments with your camera.`);
+    toast(complete()?'Your photos are in. Your keepsake is printing.':`${photos.length} photos added. Capture the remaining moments with your camera.`);
   } catch(error) {toast('One of those images could not open. Try JPG or PNG photos.');}
   finally {$('uploadButton').disabled=false;}
 }
@@ -702,7 +735,7 @@ $('enterBooth').addEventListener('click',event=>{
     $('booth').scrollIntoView({block:'start'});
   },openingTime);
 });
-window.addEventListener('pagehide',()=>{cameraRequest++;state.runId++;state.running=false;stopCamera();cancelAnimationFrame(demoAnimation);cancelAnimationFrame(lensAnimation);});
+window.addEventListener('pagehide',()=>{cameraRequest++;state.runId++;state.running=false;stopCamera();cancelAnimationFrame(demoAnimation);cancelAnimationFrame(lensAnimation);clearTimeout(printStatusTimer);});
 window.addEventListener('pageshow',event=>{if(event.persisted){state.mode=null;state.facing='user';state.mirrored=true;$('startScreen').hidden=false;$('demoCanvas').hidden=true;$('switchCameraButton').hidden=true;$('mirrorButton').hidden=true;$('cameraStatus').textContent='Camera is off';$('cameraStatus').classList.remove('live');lockSettings(false);refresh();if(!document.body.classList.contains('landing-active'))setTimeout(()=>enableCamera('user'),120);}});
 
 // Add depth on pointer devices and gentle entrance motion without affecting touch use.
